@@ -1,3 +1,12 @@
+import pandas as pd
+import logging
+import numpy as np
+import statsmodels.api as sm
+from statsmodels.formula.api import ols
+import statsmodels.formula.api as smf
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def compute_group_means(data: pd.DataFrame, group_col: str, value_col: str):
     """
@@ -140,75 +149,44 @@ def create_contrast_weights(positive_groups: list, negative_groups: list) -> dic
         raise e
 
 
-def run_planned_contrast(data: pd.DataFrame, group_col: str, value_col: str, contrast_weights: dict, visualize: bool = False):
+def run_planned_contrast(data: pd.DataFrame, group_col: str, value_col: str, contrast_weights: dict):
     """
-    Perform a planned contrast on the specified groups.
-    
-    Parameters:
-    - data: pandas DataFrame containing the data
-    - group_col: categorical independent variable
-    - value_col: continuous dependent variable
-    - contrast_weights: dictionary specifying weights for each group
-    - visualize: if True, plot weighted means
-    
-    Returns:
-    - dict with t_statistic, degrees_of_freedom, p_value or None on error
+    Runs a planned contrast using OLS regression (statsmodels).
+    Automatic handling of means and standard errors via linear hypothesis test.
     """
-    import matplotlib.pyplot as plt
-    from scipy import stats
-
+    import statsmodels.formula.api as smf
+    logger = logging.getLogger(__name__)
+    
     try:
-        # Log start of planned contrast
-        logger.info(f"Running planned contrast for '{value_col}' across '{group_col}'")
-        # Check that all groups in contrast_weights exist in the data
-        missing_groups = [g for g in contrast_weights if g not in data[group_col].unique()]
-        if missing_groups:
-            raise KeyError(f"Groups missing from data: {missing_groups}")
-
-        # Group data by the categorical variable
-        grouped = data.groupby(group_col)[value_col]
-        means = grouped.mean()      # Compute mean per group
-        ns = grouped.count()        # Compute sample size per group
-
-        # Compute weighted contrast value
-        contrast_value = sum(contrast_weights[g] * means[g] for g in contrast_weights)
-
-        # Compute variance of the contrast
-        variance = sum((contrast_weights[g] ** 2) * grouped.var()[g] / ns[g] for g in contrast_weights)
-
-        # Calculate t-statistic and degrees of freedom
-        t_stat = contrast_value / (variance ** 0.5)
-        df = len(data) - len(means)
-
-        # Compute two-tailed p-value
-        p_value = stats.t.sf(abs(t_stat), df) * 2
-
-        # Log results
-        logger.info(f"Planned contrast result: t={t_stat:.3f}, df={df}, p={p_value:.4f}")
-
-        # Optional visualization of weighted means
-        if visualize:
-            weighted_means = {g: means[g]*contrast_weights[g] for g in contrast_weights}
-            plt.figure(figsize=(8,5))
-            plt.bar(weighted_means.keys(), weighted_means.values(), color='skyblue')
-            plt.ylabel(f"Weighted {value_col}")
-            plt.title("Planned Contrast Weighted Means")
-            plt.show()
-
-        # Return results as dictionary
-        return {"t_statistic": t_stat, "degrees_of_freedom": df, "p_value": p_value}
-
-    except KeyError as key_error:
-        # Raised if a specified group does not exist
-        logger.error(f"Key error: {key_error}")
-        return None
-
-    except ZeroDivisionError:
-        # Raised if variance calculation is zero (cannot divide by zero)
-        logger.error("Variance calculation resulted in zero. Contrast cannot be computed")
-        return None
-
-    except Exception as unexpected_error:
-        # Catch all other unexpected errors
-        logger.error(f"Unexpected error during planned contrast: {unexpected_error}")
+        logger.info(f"Starting planned contrast for '{value_col}' by '{group_col}'")
+        
+        # Validation
+        missing = set(contrast_weights) - set(data[group_col].unique())
+        if missing:
+            raise KeyError(f"Groups missing from dataset: {missing}")
+        
+        # Fit OLS Model
+        formula = f"Q('{value_col}') ~ C(Q('{group_col}')) - 1"
+        model = smf.ols(formula, data=data).fit()
+        
+        # Map Weights to model parameters
+        contrast_vector = [
+            next((w for g, w in contrast_weights.items() if f"[{g}]" in p or f"[T.{g}]" in p), 0)
+            for p in model.params.index
+        ]
+        
+        # Run T-Test
+        t_result = model.t_test(contrast_vector)
+        t_stat, p_val = t_result.tvalue.item(), t_result.pvalue.item()
+        
+        logger.info(f"Contrast Result: t={t_stat:.3f}, p={p_val:.4f}")
+        
+        return {
+            "t_statistic": t_stat,
+            "degrees_of_freedom": t_result.df_denom,
+            "p_value": p_val
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in planned contrast: {e}")
         return None

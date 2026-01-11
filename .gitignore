@@ -1,0 +1,6 @@
+# Unnecessary files and directories to ignore
+src/__pycache__/
+tests/__pycache__/
+
+# Unnecessary OS files
+.DS_Store

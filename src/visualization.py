@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import spearmanr, pearsonr
+from significance_check import find_sig
 import logging
 
 # Initialize the logger for this specific module
@@ -16,6 +17,16 @@ def plot_correlation(cor_1, cor_2, p_value):
         plt.xlabel(cor_1.name) #Takes the name of the column
         plt.ylabel(cor_2.name) #Takes the name of the column
         plt.show()
+        
+        
+def heat_map_correlation_pearson(df):
+    numeric_df = df.select_dtypes(include=['number']) # including only the numeric category
+    corr_matrix = numeric_df.corr() #create matrix of pearson correlation
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f")
+    plt.title('Correlation Heatmap')
+    plt.show()
+
            
 def plot_distributions(data: pd.DataFrame, group_col: str, value_col: str):
     """
@@ -67,3 +78,4 @@ def plot_distributions(data: pd.DataFrame, group_col: str, value_col: str):
         # Catch any other unexpected errors
         logger.error(f"Unexpected error during plotting: {unexpected_error}")
         return False
+    

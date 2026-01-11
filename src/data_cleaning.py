@@ -99,7 +99,6 @@ def handle_missing_values_hybrid(df: pd.DataFrame) -> pd.DataFrame:
         df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
         logger.info(f"Filled NaNs in numeric columns {list(numeric_cols)} with their means.")
 
-
         # Handle non-numeric columns: store row count before dropping
         rows_before = len(df)
         # Drop rows where categorical columns have missing values
@@ -115,48 +114,6 @@ def handle_missing_values_hybrid(df: pd.DataFrame) -> pd.DataFrame:
     except Exception as e:
         # Log error and re-raise
         logger.error(f"Error in hybrid cleaning: {e}")
-        raise e
-    
-
-
-    """
-    Detects potential outliers using Z-scores in numeric columns.
-    Returns a Series counting the number of outliers per column.
-    
-    Args:
-        df (pd.DataFrame): The input dataframe.
-        threshold (float): The Z-score threshold (default is 3).
-        
-    Returns:
-        pd.Series: A count of outliers for each numeric column.
-    """
-    try:
-        # 1. Select numeric columns
-        num_cols = df.select_dtypes(include=[np.number]).columns
-        outliers_count = {}
-
-        # 2. Iterate and calculate Z-scores
-        for col in num_cols:
-            s = df[col].dropna()
-            
-            if s.std() == 0:
-                outliers_count[col] = 0
-                continue
-
-            # Calculate Z-score
-            z_scores = (s - s.mean()) / s.std()
-            
-            # Count outliers
-            count = (np.abs(z_scores) > threshold).sum()
-            outliers_count[col] = count
-            
-            if count > 0:
-                logger.info(f"Column '{col}' has {count} outliers (Z-score > {threshold}).")
-
-        return pd.Series(outliers_count).sort_values(ascending=False)
-
-    except Exception as e:
-        logger.error(f"Error in detect_outliers: {e}")
         raise e
     
     
@@ -185,7 +142,6 @@ def remove_outliers(df: pd.DataFrame, threshold: float = 3.0) -> pd.DataFrame:
         pd.DataFrame: The dataset with outliers removed.
     """
 
-
     try:
         # Store initial row count
         initial_count = len(df)
@@ -207,7 +163,7 @@ def remove_outliers(df: pd.DataFrame, threshold: float = 3.0) -> pd.DataFrame:
         raise e
     
     
-def is_valid_level(series: pd.Series) -> bool:
+def is_valid_level(categories, series: pd.Series) -> bool:
     """
     Checks if a series contains only valid ordinal levels: 'Low', 'Moderate', 'High'.
     Returns True if all unique values (ignoring NaNs) are within this set.

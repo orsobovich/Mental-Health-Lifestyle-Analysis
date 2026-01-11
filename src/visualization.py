@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import spearmanr, pearsonr
-from significance_check import find_sig
+from src.significance_check import find_sig 
 import pandas as pd
 import logging
 

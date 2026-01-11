@@ -21,8 +21,9 @@ def synthetic_data():
     Group B: Low values (Mean = 2)
     Group C: Medium values (Mean = 6)
     """
+    # Shape: (30, 2)
     data = {
-        'Group': ['A']*10 + ['B']*10 + ['C']*10,
+        'Group': ['A']*10 + ['B']*10 + ['C']*10, 
         'Value': [10, 10, 10, 10, 10, 10, 10, 10, 10, 10,  # Mean 10
                    2, 2, 2, 2, 2, 2, 2, 2, 2, 2,          # Mean 2
                    6, 6, 6, 6, 6, 6, 6, 6, 6, 6]          # Mean 6

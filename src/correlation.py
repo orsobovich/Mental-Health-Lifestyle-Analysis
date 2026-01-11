@@ -1,8 +1,12 @@
 from data_cleaning import is_valid_level, level_to_numeric
 import pandas as pd
-import logging
 import numpy as np
 from scipy.stats import pearsonr, spearmanr, chi2_contingency
+import logging
+
+# Initialize the logger for this specific module
+# This logger automatically inherits the configuration (format, level) defined in utils/main
+logger = logging.getLogger(__name__)
 
 def calculate_correlation(var_1, var_2):
     """

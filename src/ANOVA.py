@@ -1,92 +1,81 @@
 import pandas as pd
-import logging
 import numpy as np
 import statsmodels.api as sm
 from statsmodels.formula.api import ols
 import statsmodels.formula.api as smf
-logging.basicConfig(level=logging.INFO)
+import logging
+
+# Initialize the logger for this specific module
+# This logger automatically inherits the configuration (format, level) defined in utils/main
 logger = logging.getLogger(__name__)
 
 
 def compute_group_means(data: pd.DataFrame, group_col: str, value_col: str):
     """
     Compute the mean of `value_col` for each category in `group_col`.
-
-    Parameters
-    ----------
-    data : pd.DataFrame
-        The input DataFrame containing the data.
-    group_col : str
-        The name of the categorical column to group by.
-        (Why str? Because we need the column name as text)
-    value_col : str
-        The name of the numeric column to calculate the mean for.
-
-    Returns
-    -------
-    pd.Series or None
-        A pandas Series with group names as index and their mean as values.
-        Returns None if an error occurs.
+    Handles specific errors and raises them to stop execution.
     """
-    
-    # Log that the function has started
-    logger.info(f"Computing mean of '{value_col}' per '{group_col}'")
-
     try:
+        # Log that the function has started
+        logger.info(f"Computing mean of '{value_col}' per '{group_col}'")
+
+
         # Compute the mean of value_col for each group in group_col
         means = data.groupby(group_col)[value_col].mean()
-        
+       
         # Log the first few results for monitoring
         logger.info(f"Computed means (head):\n{means.head()}")
         return means
 
+
     except KeyError as key_error:
         # Catch the error if the specified column does not exist in the DataFrame
         logger.error(f"Column not found: {key_error}")
-        return None
+        raise key_error
+
 
     except TypeError as type_error:
-        # Catch errors if the input data types are incorrect (for example non-DataFrame values)
+        # Catch errors if the input data types are incorrect
         logger.error(f"Type error encountered: {type_error}")
-        return None
+        raise type_error
+
 
     except ValueError as value_error:
-        # Catch errors if the computation cannot be performed due to invalid values (for example non-numeric values)
+        # Catch errors if the computation cannot be performed due to invalid values
         logger.error(f"Value error encountered: {value_error}")
-        return None
+        raise value_error
+
 
     except Exception as e:
-        # Catch any other unexpected errors that might occur during computation
+        # Catch any other unexpected errors
         logger.error(f"Unexpected error during group mean computation: {e}")
-        return None
-    
+        raise e
+ 
     
 def run_one_way_anova(data: pd.DataFrame, group_col: str, value_col: str):
     """
     Perform one-way ANOVA and return ANOVA table.
-
-    Features:
-    - Logging for info, warnings, and errors
-    - Handles spaces/special characters in column names with Q()
-    - Marks categorical variable with C() for ANOVA
-    - Warns if some groups are very small (<5)
-    - Safe execution with try-except
     """
-    import statsmodels.api as sm
-    from statsmodels.formula.api import ols
-
     try:
         logger.info(f"Running one-way ANOVA on '{value_col}' grouped by '{group_col}'")
 
+
+        # Step 1: Compute means (If this fails, the detailed errors above will be raised)
+        compute_group_means(data, group_col, value_col)
+
+
+        # Step 2: Prepare formula for OLS
         # Wrap dependent variable column with Q() to handle spaces/special characters
         # Wrap independent categorical variable with C(Q()) to mark it as categorical
-        # Build formula for OLS model
         formula = f'Q("{value_col}") ~ C(Q("{group_col}"))'
+       
         # Fit the model using Ordinary Least Squares regression
         model = ols(formula, data=data).fit()
 
+
         # Perform ANOVA on the fitted model, Type II sums of squares
         anova_table = sm.stats.anova_lm(model, typ=2)
+
 
         # Warn if any groups are very small
         counts = data[group_col].value_counts()
@@ -94,57 +83,52 @@ def run_one_way_anova(data: pd.DataFrame, group_col: str, value_col: str):
         if not small_groups.empty:
             logger.warning(f"Small groups detected: {small_groups.to_dict()}")
 
+
         # Log ANOVA results
         logger.info(f"ANOVA completed:\n{anova_table}")
         return anova_table
 
+
     except Exception as unexpected_error:
-        # Catch any other unexpected errors
+        # Log and raise to stop main.py
         logger.error(f"Unexpected error during ANOVA: {unexpected_error}")
-        return None
+        raise unexpected_error
 
 
 def create_contrast_weights(positive_groups: list, negative_groups: list) -> dict:
     """
     Creates a weight dictionary for planned contrasts.
-    
-    Logic:
-    - Assigns positive weights to 'positive_groups'.
-    - Assigns negative weights to 'negative_groups'.
-    - Ensures the sum of weights is zero (required for valid contrasts).
-    
-    Args:
-        positive_groups (list): List of group names expected to have HIGHER values.
-        negative_groups (list): List of group names expected to have LOWER values.
-        
-    Returns:
-        dict: A dictionary mapping group names to their calculated weights.
     """
     try:
         if not positive_groups or not negative_groups:
             logger.error("Both positive and negative groups must be provided.")
             raise ValueError("Groups lists cannot be empty")
 
-        # sum negative weights + sum positive weights = 0
+
+        # Ensures the sum of weights is zero (required for valid contrasts) --> sum negative weights + sum positive weights = 0
+       
         # positive weight / number of positive groups
         pos_weight = 1.0 / len(positive_groups)
-        
+       
         # negative weight / number of negative groups
         neg_weight = -1.0 / len(negative_groups)
 
+
         weights = {}
-        
+       
         # build the weights dictionary
         for group in positive_groups:
             weights[group] = pos_weight
-            
+           
         for group in negative_groups:
             weights[group] = neg_weight
-            
+           
         logger.info(f"Contrast weights created: {weights}")
         return weights
 
+
     except Exception as e:
+	   # Log and raise to stop main.py
         logger.error(f"Error creating contrast weights: {e}")
         raise e
 
@@ -154,11 +138,12 @@ def run_planned_contrast(data: pd.DataFrame, group_col: str, value_col: str, con
     Runs a planned contrast using OLS regression (statsmodels).
     Automatic handling of means and standard errors via linear hypothesis test.
     """
-    import statsmodels.formula.api as smf
-    logger = logging.getLogger(__name__)
-    
+
     try:
         logger.info(f"Starting planned contrast for '{value_col}' by '{group_col}'")
+        
+        # Compute means (Log means before analysis - for consistency)
+        compute_group_means(data, group_col, value_col)
         
         # Validation
         missing = set(contrast_weights) - set(data[group_col].unique())
@@ -188,5 +173,6 @@ def run_planned_contrast(data: pd.DataFrame, group_col: str, value_col: str, con
         }
         
     except Exception as e:
+        # Log and raise to stop main.py
         logger.error(f"Error in planned contrast: {e}")
-        return None
+        raise e

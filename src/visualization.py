@@ -1,6 +1,11 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import spearmanr, pearsonr
+import logging
+
+# Initialize the logger for this specific module
+# This logger automatically inherits the configuration (format, level) defined in utils/main
+logger = logging.getLogger(__name__)
 
 
  # Create a correlation plot
@@ -15,7 +20,6 @@ def plot_correlation(cor_1, cor_2, p_value):
 def plot_distributions(data: pd.DataFrame, group_col: str, value_col: str):
     """
     Plot the distribution of a numeric column across categories using a boxplot.
-
     Parameters
     ----------
     data : pd.DataFrame
@@ -30,9 +34,6 @@ def plot_distributions(data: pd.DataFrame, group_col: str, value_col: str):
     bool
         True if the plot was successfully created, False otherwise.
     """
-
-    import matplotlib.pyplot as plt
-    import seaborn as sns
 
     # Log that the function started
     logger.info(f"Plotting distribution of '{value_col}' across '{group_col}'")

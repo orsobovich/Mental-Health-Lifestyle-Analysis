@@ -1,15 +1,29 @@
 from pathlib import Path
 import pandas as pd
-import logging
 import numpy as np
+import logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(levelname)s - %(message)s"
-)
+# Initialize the logger for this specific module
+# This logger automatically inherits the configuration (format, level) defined in utils/main
+logger = logging.getLogger(__name__)
+
 # Configure logger as per instructions 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+def get_column_types(df: pd.DataFrame):
+    """
+    Helper function to split columns into numeric and categorical.
+    Returns two index objects: numeric_cols, non_numeric_cols.
+    """
+    # Select columns with numeric data types
+    numeric_cols = df.select_dtypes(include=['number']).columns
+    # Select columns that are not numeric (categorical/object)
+    non_numeric_cols = df.select_dtypes(exclude=['number']).columns
+   
+    # Return both lists of columns
+    return numeric_cols, non_numeric_cols
+
 
 def load_dataset(filename):
     """
@@ -73,48 +87,34 @@ def overview(df, n=5):
 
 
 def handle_missing_values_hybrid(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Hybrid cleaning function:
-    1. Numeric columns: Fills missing values with the column mean.
-    2. Non-numeric columns: Drops rows with missing values.
-    
-    Args:
-        df (pd.DataFrame): The input dataset.
-        
-    Returns:
-        pd.DataFrame: The cleaned dataset.
-    """
+    """Fills numeric NaNs with mean, drops categorical NaNs."""
     try:
-        initial_count = len(df)
-        
-        # 1. Pre-processing: Convert empty strings/whitespace to NaN
-        # This ensures that " " is treated as missing data, not as a valid string value.
+        # Replace empty strings or whitespace with actual NaN values
         df = df.replace(r'^\s*$', np.nan, regex=True)
+       
+        # Use the helper function to identify column types
+        numeric_cols, non_numeric_cols = get_column_types(df)
 
-        # 2. Identify numeric and non-numeric columns
-        numeric_cols = df.select_dtypes(include=['number']).columns
-        non_numeric_cols = df.select_dtypes(exclude=['number']).columns
-
-        # 3. Handle numeric columns: Fill with mean
-        # Calculate the mean for each numeric column
-        means = df[numeric_cols].mean()
-        # Fill NaN values in numeric columns with their respective means
-        df[numeric_cols] = df[numeric_cols].fillna(means)
+        # Fill missing values in numeric columns with the column mean
+        df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
         logger.info(f"Filled NaNs in numeric columns {list(numeric_cols)} with their means.")
 
-        # 4. Handle non-numeric columns: Drop rows
-        # We drop rows only if the missing value is in a categorical/text column
-        rows_before_drop = len(df)
+
+        # Handle non-numeric columns: store row count before dropping
+        rows_before = len(df)
+        # Drop rows where categorical columns have missing values
         df = df.dropna(subset=non_numeric_cols)
-        
-        dropped_count = rows_before_drop - len(df)
-        if dropped_count > 0:
-            logger.info(f"Dropped {dropped_count} rows due to missing values in non-numeric columns.")
-
+        # Calculate how many rows were dropped
+        dropped = rows_before - len(df)
+       
+        # Log the operation result if rows were dropped
+        if dropped > 0:
+            logger.info(f"Dropped {dropped} rows (categorical missing).")
         return df
-
+   
     except Exception as e:
-        logger.error(f"Error in handle_missing_values_hybrid: {e}")
+        # Log error and re-raise
+        logger.error(f"Error in hybrid cleaning: {e}")
         raise e
     
 
@@ -160,48 +160,52 @@ def handle_missing_values_hybrid(df: pd.DataFrame) -> pd.DataFrame:
         raise e
     
     
+def calculate_z_scores(df: pd.DataFrame, threshold: float = 3.0):
+    """Helper to calculate Z-scores mask."""
+    # Use the helper function to get only numeric columns
+    numeric_cols, _ = get_column_types(df)
+   
+    # Calculate Z-scores for numeric columns
+    z_scores = (df[numeric_cols] - df[numeric_cols].mean()) / df[numeric_cols].std()
+   
+    # Create boolean mask where all z-scores are within threshold
+    mask = (np.abs(z_scores) <= threshold).all(axis=1)
+    return mask
+
+
 def remove_outliers(df: pd.DataFrame, threshold: float = 3.0) -> pd.DataFrame:
-    """
-    Removes rows containing outliers in any numeric column using Z-score.
-    Standard threshold is 3 (values beyond 3 standard deviations are removed).
-    
-    Args:
-        df(pd.DataFrame): The input dataset.
-        threshold (float): Z-score threshold (default is 3.0).
-        
-    Returns:
+    """Removes rows with outliers in any numeric column using Z-score.
+       Standard threshold is 3 (values beyond 3 standard deviations are removed).
+       
+       Args:
+       df(pd.DataFrame): The input dataset.
+       threshold (float): Z-score threshold (default is 3.0).
+       
+        Returns:
         pd.DataFrame: The dataset with outliers removed.
     """
+
+
     try:
-        # 1. Save original row count for logging purposes
+        # Store initial row count
         initial_count = len(df)
-
-        # 2. Identify numeric columns only (Z-score applies only to numbers)
-        numeric_cols = df.select_dtypes(include=['number']).columns
-
-        # 3. Calculate Z-scores for all numeric columns at once
-        # Formula: (Value - Mean) / Standard Deviation
-        z_scores = (df[numeric_cols] - df[numeric_cols].mean()) / df[numeric_cols].std()
-
-        # 4. Keep rows where ALL numeric values are within the threshold
-        # We check if absolute Z-score <= threshold
-        mask = (np.abs(z_scores) <= threshold).all(axis=1)
-        
-        # 5. Filter the dataframe
+        # Get mask for valid rows (uses the helper internally)
+        mask = calculate_z_scores(df, threshold)
+        # Filter DataFrame to keep only non-outliers
         df_clean = df[mask]
-
-        # Log the number of dropped rows
-        dropped_count = initial_count - len(df_clean)
-        if dropped_count > 0:
-            logger.info(f"Removed {dropped_count} rows with outliers (Z-score > {threshold}).")
-        
+       
+        # Calculate number of removed rows
+        removed = initial_count - len(df_clean)
+        # Log if rows were removed
+        if removed > 0:
+            logger.info(f"Removed {removed} outlier rows.")
         return df_clean
-
+   
     except Exception as e:
-        logger.error(f"Error in remove_outliers: {e}")
+        # Log error and re-raise
+        logger.error(f"Error removing outliers: {e}")
         raise e
     
-#change .   
     
 def is_valid_level(series: pd.Series) -> bool:
     """

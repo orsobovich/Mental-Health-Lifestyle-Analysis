@@ -1,4 +1,18 @@
 
+import logging
+from src.utils import setup_logging
+
+
+# Initialize the logging configuration
+setup_logging()
+
+
+# Get the logger instance for the main module
+logger = logging.getLogger(__name__)
+
+
+
+
 
 
 #exploration

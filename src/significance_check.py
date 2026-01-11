@@ -1,7 +1,9 @@
-import logging
 import sys
-logging.basicConfig(level=logging.INFO,format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout,force=True)
+import logging
 
+# Initialize the logger for this specific module
+# This logger automatically inherits the configuration (format, level) defined in utils/main
+logger = logging.getLogger(__name__)
 
 def find_sig(p_value, alpha=0.05):
     if p_value < alpha:

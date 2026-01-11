@@ -1,7 +1,7 @@
 
 import logging
-from src.utils import setup_logging
-from correlation import calculate_correlation
+from src.utils import setup_logging, load_dataset
+from src.correlation import calculate_correlation
 
 
 # Initialize the logging configuration
@@ -12,7 +12,8 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-
+#load data
+df = load_dataset('Mental_Health_Lifestyle_Dataset.csv')
 
 
 

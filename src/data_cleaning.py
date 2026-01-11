@@ -1,4 +1,3 @@
-from pathlib import Path
 import pandas as pd
 import numpy as np
 import logging
@@ -25,68 +24,8 @@ def get_column_types(df: pd.DataFrame):
     return numeric_cols, non_numeric_cols
 
 
-def load_dataset(filename):
-    """
-    Loads a dataset from a given filename or absolute path.
-    If a relative filename is provided, the file is searched for
-    in the project root directory.
-    """
-    try:
-        logging.info("Starting dataset loading")
 
-        base_dir = Path(__file__).resolve().parents[1]
-        data_path = Path(filename)
-
-        if not data_path.is_absolute():
-            data_path = base_dir / filename
-
-        logging.info(f"Resolved dataset path: {data_path}")
-
-        df = pd.read_csv(data_path)
-
-        logging.info("Dataset loaded successfully")
-        return df
-
-    except FileNotFoundError:
-        logging.error(f"File not found: {data_path}")
-        raise FileNotFoundError(f"File not found: {data_path}")
-
-    except Exception as e:
-        logging.error(f"Unexpected error while loading dataset: {e}")
-        raise RuntimeError(f"Error loading dataset: {e}")
-
-
-def overview(df, n=5):
-    """
-    Return a basic overview of the dataset.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input dataset.
-    n : int
-        Number of rows to display from the top.
-
-    Returns
-    -------
-    dict
-        Dictionary containing dataset overview information.
-    """
-    if df is None or df.empty:
-        raise ValueError("DataFrame is empty or None")
-
-    overview_dict = {
-        "shape": df.shape,
-        "columns": list(df.columns),
-        "dtypes": df.dtypes.to_dict(),
-        "missing_values": df.isnull().sum().to_dict(),
-        "head": df.head(n)
-    }
-
-    return overview_dict
-
-
-def handle_missing_values_hybrid(df: pd.DataFrame) -> pd.DataFrame:
+def handle_missing_values_hybrid(df: pd.DataFrame):
     """Fills numeric NaNs with mean, drops categorical NaNs."""
     try:
         # Replace empty strings or whitespace with actual NaN values
@@ -163,30 +102,31 @@ def remove_outliers(df: pd.DataFrame, threshold: float = 3.0) -> pd.DataFrame:
         raise e
     
     
-def is_valid_level(categories, series: pd.Series) -> bool:
+def is_valid_level(series):
     """
     Checks if a series contains only valid ordinal levels: 'Low', 'Moderate', 'High'.
     Returns True if all unique values (ignoring NaNs) are within this set.
     """
     try:
-        ordinal_levels = {"Low", "Moderate", "High"} 
+        ordinal_levels = {"Low", "Moderate", "High"}
         # Create a set of unique values from the series, dropping NaNs first
         unique_values = set(series.dropna().unique())
-        
+       
         # Check if the unique values are a subset of the allowed levels
         is_valid = unique_values.issubset(ordinal_levels)
-        
-        if not is_valid:
+       
+        if not is_valid: # help us to understad that the funqtion isn't valid_level without an error, will return the string that dosen't belong to valid_level
             logger.debug(f"Column contains values outside {ordinal_levels}: {unique_values - ordinal_levels}")
-            
+           
         return is_valid
+
 
     except Exception as e:
         logger.error(f"Error in is_valid_level: {e}")
         return False
 
 
-def level_to_numeric(series: pd.Series) -> pd.Series:
+def level_to_numeric(series: pd.Series):
     """
     Maps categorical levels ('Low', 'Moderate', 'High') to numeric ranks (1, 2, 3).
     Useful for Spearman's rank correlation analysis.

@@ -21,7 +21,6 @@ def get_column_types(df: pd.DataFrame):
     return numeric_cols, non_numeric_cols
 
 
-
 def handle_missing_values_hybrid(df: pd.DataFrame):
     """Fills numeric NaNs with mean, drops categorical NaNs."""
     try:

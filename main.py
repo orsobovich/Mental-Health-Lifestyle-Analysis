@@ -50,9 +50,9 @@ def main():
     # - Rows with missing categorical values are dropped (to avoid bias)
     df_clean = handle_missing_values_hybrid(df)
     
-    # Convert ordinal categorical columns (like 'Stress Level') into numeric values
-    # This allows us to perform correlation analysis on them
-    df_clean = process_ordinal_columns(df_clean)
+    # 1.2 Remove Outliers (New Step!)
+    # Removes extreme values (Z-score > 3) to ensure statistical validity
+    df_clean = remove_outliers(df_clean, threshold=3.0)
 
     # ==============================================================================
     # Step 2: Visualization of Correlations (Exploratory + Hypothesis 2)
@@ -70,11 +70,24 @@ def main():
     stress_col = df_clean['Stress Level']
     
     # Calculate Spearman correlation because 'Stress Level' is ordinal (ranked data)
-    corr, p_val = spearmanr(sleep_col, stress_col)
-    logger.info(f"Hypothesis 2 Result (Sleep vs Stress): Correlation r={corr:.3f}, p-value={p_val:.4f}")
+    corr1, p_val1 = spearmanr(sleep_col, stress_col)
+    logger.info(f"Hypothesis 2 Result (Sleep vs Stress): Correlation r={corr1:.3f}, p-value={p_val1:.4f}")
     
     # Plot the correlation with a regression line ONLY if the result is significant (p < 0.05)
-    plot_correlation(sleep_col, stress_col, p_val)
+    plot_correlation(sleep_col, stress_col, p_val1)
+    
+    # C. Additional Correlation Checks
+    # Check correlation between Happiness Score and Social Interaction Score
+    
+    happiness_col = df_clean['Happiness Score']
+    social_col = df_clean['Social Interaction Score']
+    
+    # Calculate Spearman correlation because 'Stress Level' is ordinal (ranked data)
+    corr2, p_val2 = spearmanr(happiness_col, social_col)
+    logger.info(f"Hypothesis 2 Result (Happiness Score vs Social Interaction Score): Correlation r={corr2:.3f}, p-value={p_val2:.4f}")
+    
+    # Plot the correlation with a regression line ONLY if the result is significant (p < 0.05)
+    plot_correlation(happiness_col, social_col, p_val2)
 
     # ==============================================================================
     # Step 3: Hypothesis Testing (ANOVA & Planned Contrasts)

@@ -9,6 +9,7 @@ def setup_logging():
     # Configure the logging system with level INFO and a specific format including time
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 def load_dataset(filename):
     """
     Loads a dataset from a given filename or absolute path.
@@ -26,7 +27,9 @@ def load_dataset(filename):
 
         logging.info(f"Resolved dataset path: {data_path}")
 
-        df = pd.read_csv(data_path)
+        missing_values = ["", " ", "NaN", "nan", "NA", "null"]
+        
+        df = pd.read_csv(data_path, na_values=missing_values, keep_default_na=False)
 
         logging.info("Dataset loaded successfully")
         return df

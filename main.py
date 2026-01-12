@@ -1,10 +1,11 @@
 from src.visualization import (
-    heat_map_correlation_pearson,
     plot_correlation,
     display_descriptive_table,
     plot_distributions,
     display_anova_table,
-    display_contrast_weights
+    display_contrast_weights,
+    plot_cleaning_report,
+    heat_map
 )
 from src.ANOVA import (
     create_contrast_weights, 
@@ -44,27 +45,33 @@ def main():
     
     # Load the raw dataset
     df = load_dataset(filename)
+        
+    # --- Create a copy for visualization purposes ---
+    # We keep the raw version to compare "Before vs After" later
+    df_raw_for_plot = df.copy()
     
     # Handle missing values using a hybrid approach:
     # - Numeric columns are filled with the mean (to preserve distribution)
     # - Rows with missing categorical values are dropped (to avoid bias)
     df_clean = handle_missing_values_hybrid(df)
     
-    # 1.2 Remove Outliers (New Step!)
     # Removes extreme values (Z-score > 3) to ensure statistical validity
     df_clean = remove_outliers(df_clean, threshold=3.0)
+    
+    # Visualize the impact (Missing values & Dropped rows)
+    plot_cleaning_report(df_raw_for_plot, df_clean)
 
     # ==============================================================================
     # Step 2: Visualization of Correlations (Exploratory + Hypothesis 2)
     # ==============================================================================
     logger.info("--- Step 2: Visualizing Correlations ---")
     
-    # A. General Heatmap
-    # Displays Pearson correlations between all numeric variables to identify patterns
-    heat_map_correlation_pearson(df_clean)
     
-    # B. Specific Hypothesis: Sleep Hours vs. Stress Level
+    # A. Specific Hypothesis: Sleep Hours vs. Stress Level 
     # We want to check if more sleep correlates with less stress.
+    
+    logger.info("Generating Correlation Heatmap for Numeric Variables")
+    heat_map(df_clean)
     
     sleep_col = df_clean['Sleep Hours']
     stress_col = df_clean['Stress Level']
@@ -76,7 +83,7 @@ def main():
     # Plot the correlation with a regression line ONLY if the result is significant (p < 0.05)
     plot_correlation(sleep_col, stress_col, p_val1)
     
-    # C. Additional Correlation Checks
+    # B. Additional Correlation Checks
     # Check correlation between Happiness Score and Social Interaction Score
     
     happiness_col = df_clean['Happiness Score']
@@ -119,7 +126,7 @@ def main():
     
     # Define the groups
     plant_based = ['Vegan', 'Vegetarian']
-    others = ['Junk', 'Balanced', 'Keto'] # Ensure these match exact names in your CSV!
+    others = ['Junk Food', 'Balanced', 'Keto']
     
     try:
         # Create weights: Positive for plant-based, Negative for others
@@ -180,7 +187,6 @@ calculate_correlation(df["Social Interaction Score"], df["Stress Level"])
 logging.info("correlation between Age and Social Interaction Score:")
 calculate_correlation(df["Age"], df["Social Interaction Score"])
 
-heat_map_correlation_pearson(df)
 corr, p_val = spearmanr(df['Sleep Hours'], df['Stress Level'])
 logger.info(f"Sleep vs Stress: corr={corr:.2f}, p={p_val:.4f}")
 

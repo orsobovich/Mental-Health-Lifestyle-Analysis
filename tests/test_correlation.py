@@ -1,8 +1,7 @@
 import pytest
 import pandas as pd
-from src.data_cleaning import is_valid_level, level_to_numeric
 from src.significance_check import find_sig
-from src.correlation import calculate_correlation
+from src.correlation import calculate_correlation, is_valid_level, level_to_numeric
 
 
 def test_on_valid_levels_should_return_true():
@@ -45,7 +44,6 @@ def test_on_insignificant_pvalue_should_return_false():
 
 
 
-
 def test_correlation_pearson_on_both_numeric_should_not_raise_exception():
     var1 = pd.Series([1, 2, 3, 4, 5])
     var2 = pd.Series([2, 4, 6, 8, 10])
@@ -53,7 +51,6 @@ def test_correlation_pearson_on_both_numeric_should_not_raise_exception():
         calculate_correlation(var1, var2)
     except Exception as e:
         pytest.fail(f"Pearson correlation failed unexpectedly: {e}")        
-
 
 
 
@@ -79,7 +76,6 @@ def test_correlation_spearman_on_both_ordinal_should_not_raise_exception():
     except Exception as e:
         pytest.fail(f"Spearman correlation failed unexpectedly: {e}")
    
-   
 
 
 def test_correlation_cramers_should_not_raise_exception():      
@@ -93,7 +89,7 @@ def test_correlation_cramers_should_not_raise_exception():
        
 
 
-def test_correlation_pearson_on_invalid_levels_should_raise_exception():
+def test_correlation_on_invalid_input_should_raise_exception():
    
     var_numeric = pd.Series([1, 2, 3])
     var_invalid = pd.Series(['Apple', 'Banana', 'Orange'])

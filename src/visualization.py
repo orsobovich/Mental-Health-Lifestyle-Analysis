@@ -1,7 +1,11 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import spearmanr, pearsonr, chi2_contingency
-from src.significance_check import find_sig 
+from src.significance_check import find_sig
+from src.data_cleaning import get_column_types
+from typing import List, Tuple, Optional, Dict
+import numpy as np
+from src.exploration import data_info, categorical_frequencies
 import pandas as pd
 import logging
 
@@ -9,11 +13,12 @@ import logging
 # This logger automatically inherits the configuration (format, level) defined in utils/main
 logger = logging.getLogger(__name__)
         
-        
-def heat_map_correlation_pearson(df):
+
+
+def heat_map(df):
     numeric_df = df.select_dtypes(include=['number']) # including only the numeric category
     corr_matrix = numeric_df.corr() #create matrix of pearson correlation
-    plt.figure(figsize=(12, 10))
+    plt.figure(figsize=(10, 8))
     sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f")
     plt.title('Correlation Heatmap')
     plt.show()
@@ -33,7 +38,7 @@ def plot_correlation(cor_1, cor_2, p_value):
             # Create a regression plot using Seaborn
             # scatter_kws={'alpha':0.5}: Makes the dots semi-transparent
             # line_kws={'color':'red'}: Makes the regression line red
-            sns.regplot(x=cor_1, y=cor_2, scatter_kws={'alpha':0.5}, line_kws={'color':'red'})
+            sns.regplot(x=cor_1, y=cor_2, line_kws={'color':'red'}, scatter=False)
            
             # Set the title dynamically based on column names
             plt.title(f"Correlation: {cor_1.name} vs {cor_2.name}")
@@ -186,20 +191,34 @@ def plot_distributions(df: pd.DataFrame, group_col: str, value_col: str):
 
 def display_anova_table(anova_table: pd.DataFrame):
     """
-    Takes the ANOVA results DataFrame, formats it, and displays it as an image.
+    Takes the ANOVA results DataFrame, cleans the raw column names (removes statsmodels wrapping),
+    formats the numbers, and displays it as an image.
     """
     try:
-        # Round all numbers in the ANOVA table to 4 decimal places
-        formatted_table = anova_table.round(4)
+        # 1. Create a copy to avoid modifying the original dataframe
+        formatted_table = anova_table.copy()
+
+
+        # 2. Clean the index names (Optimized Regex)
+        # We use the '|' (OR) operator to remove both the starting 'C(Q("'
+        # and the closing '"))' patterns in a single line.
+        formatted_table.index = formatted_table.index.astype(str).str.replace(r'C\(Q\("|"\)\)', '', regex=True)
+
+
+        # Standardize 'Residual' vs 'Residuals' naming if needed
+        formatted_table.index = formatted_table.index.str.replace('Residual', 'Residuals')
+
+
+        # 3. Round all numbers to 4 decimal places for better readability
+        formatted_table = formatted_table.round(4)
        
-        # Call the helper function to draw the table image
+        # 4. Call the helper function to draw the table image
         plot_dataframe_as_table(formatted_table, "ANOVA Results Table")
        
     except Exception as e:
-        # Log the specific error that occurred
         logger.error(f"Failed to display ANOVA table: {e}")
-        # Stop the program immediately by raising the error
         raise e
+
 
 
 
@@ -222,3 +241,39 @@ def display_contrast_weights(weights: dict):
         logger.error(f"Failed to display weights table: {e}")
         # Stop the program immediately by raising the error
         raise e
+    
+
+
+def plot_cleaning_report(df_raw: pd.DataFrame, df_clean: pd.DataFrame):
+    """Generates visual report: Missing values (Bar) & Data retention (Pie)."""
+    try:
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+        
+        # --- 1. Missing Values Bar Chart ---
+        missing = df_raw.isnull().sum()
+        missing = missing[missing > 0] 
+        
+        if not missing.empty:
+            sns.barplot(x=missing.index, y=missing.values, ax=ax1, palette="viridis")
+            ax1.set(title="Missing Values (Raw Data)", ylabel="Count (NaNs)", xlabel="Column")
+            ax1.tick_params(axis='x', rotation=45)
+            ax1.bar_label(ax1.containers[0], padding=3, fontweight='bold')
+        else:
+            ax1.text(0.5, 0.5, "No Missing Values!", ha='center', va='center', fontsize=12)
+            ax1.set_title("Missing Values Check")
+
+        # --- 2. Retention Pie Chart ---
+        retained, dropped = len(df_clean), len(df_raw) - len(df_clean)
+        labels = [f'Retained\n({retained})', f'Dropped\n({dropped})']
+        
+        ax2.pie([retained, dropped], explode=(0, 0.1), labels=labels, colors=['#2ecc71', '#e74c3c'],
+                autopct='%1.1f%%', shadow=True, startangle=140, textprops={'fontsize': 12, 'weight': 'bold'})
+        ax2.set_title("Data Retention Rate", fontsize=14, fontweight='bold')
+
+        plt.suptitle("Hybrid Cleaning Impact Report", fontsize=16)
+        plt.tight_layout()
+        plt.show()
+        
+    except Exception as e:
+        logger.error(f"Error generating cleaning report: {e}")
+        

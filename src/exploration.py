@@ -124,47 +124,65 @@ def descriptive_stats(df: pd.DataFrame):
 
 
 
-#  Categorical Frequencies
-def categorical_frequencies(df: pd.DataFrame, top_n: int = 10):
+def categorical_frequencies(df: pd.DataFrame, top_n: int = 10, add_other: bool = True):
     """
     Creates frequency tables for categorical variables.
-    Returns a dictionary: {column_name -> frequency table}.
+    Returns {column_name -> DataFrame with counts}.
+    Optionally adds an 'Other' row for categories outside Top N.
     """
     try:
-        # Check that the DataFrame exists and is not empty
+        # --- 1. Input Validation ---
+        # Ensure the DataFrame is valid and contains data
         if df is None or df.empty:
             raise ValueError("DataFrame is empty or None")
-
-
-        # Validate the number of categories to display
+       
+        # Ensure top_n is a valid positive integer
         if top_n <= 0:
             raise ValueError("top_n must be a positive integer")
 
 
-        # Get only non-numeric (categorical) columns
+        # --- 2. Identify Categorical Columns ---
+        # Get list of non-numeric (categorical) columns using helper function
         _, non_numeric_cols = get_column_types(df)
-
-
-        # Dictionary to store frequency tables per column
+       
+        # Dictionary to store the results
         result: Dict[str, pd.DataFrame] = {}
 
 
-        # Loop through each categorical column
+        # --- 3. Process Each Column ---
         for col in non_numeric_cols:
-            # Count category frequencies (including NaN values)
-            vc = df[col].astype("object").value_counts(dropna=False).head(top_n)
+            # Count frequency of each value (include NaN values with dropna=False)
+            # Convert to object type to handle mixed types safely
+            vc_full = df[col].astype("object").value_counts(dropna=False)
+           
+            # Select only the top N most frequent categories
+            vc_top = vc_full.head(top_n)
 
 
-            # Convert Series to DataFrame for a consistent output format
-            result[col] = vc.to_frame(name="count")
+            # --- 4. Handle "Other" Category ---
+            # If requested AND there are more categories than top_n, group the rest as "Other"
+            if add_other and len(vc_full) > top_n:
+                # Sum the counts of all remaining categories (from index top_n onwards)
+                other_count = int(vc_full.iloc[top_n:].sum())
+               
+                # Append the "Other" row to the selected top categories
+                vc_top = pd.concat([vc_top, pd.Series({"Other": other_count})])
 
 
-        # Log successful execution
-        logger.info("Categorical frequencies created successfully (top_n=%d)", top_n)
+            # --- 5. Format Output ---
+            # Convert Series to DataFrame and store it in the result dictionary
+            result[col] = vc_top.to_frame(name="count")
 
-
-        # Return all frequency tables
+        # Log success
+        logger.info("Categorical frequencies created successfully (top_n=%d, add_other=%s)", top_n, add_other)
         return result
+
+
+    except Exception as e:
+        # Log any errors encountered
+        logger.error("Error in categorical_frequencies: %s", e)
+        raise e
+
 
 
     except Exception as e:

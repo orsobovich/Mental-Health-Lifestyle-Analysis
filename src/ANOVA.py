@@ -95,7 +95,7 @@ def run_one_way_anova(data: pd.DataFrame, group_col: str, value_col: str):
         raise unexpected_error
 
 
-def create_contrast_weights(positive_groups: list, negative_groups: list) -> dict:
+def create_contrast_weights(positive_groups: list, negative_groups: list):
     """
     Creates a weight dictionary for planned contrasts.
     """

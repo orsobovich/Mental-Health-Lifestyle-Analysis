@@ -51,48 +51,47 @@ def handle_missing_values_hybrid(df: pd.DataFrame):
         logger.error(f"Error in hybrid cleaning: {e}")
         raise e
     
-    
-def calculate_z_scores(df: pd.DataFrame, threshold: float = 3.0):
-    """Helper to calculate Z-scores mask."""
-    # Use the helper function to get only numeric columns
-    numeric_cols, _ = get_column_types(df)
-   
-    # Calculate Z-scores for numeric columns
-    z_scores = (df[numeric_cols] - df[numeric_cols].mean()) / df[numeric_cols].std()
-   
-    # Create boolean mask where all z-scores are within threshold
-    mask = (np.abs(z_scores) <= threshold).all(axis=1)
-    return mask
 
-
-def remove_outliers(df: pd.DataFrame, threshold: float = 3.0) -> pd.DataFrame:
-    """Removes rows with outliers in any numeric column using Z-score.
-       Standard threshold is 3 (values beyond 3 standard deviations are removed).
-       
-       Args:
-       df(pd.DataFrame): The input dataset.
-       threshold (float): Z-score threshold (default is 3.0).
-       
-        Returns:
-        pd.DataFrame: The dataset with outliers removed.
+def remove_outliers(df: pd.DataFrame, threshold: float = 3.0):
     """
-
+    Removes rows containing outliers in any numeric column based on the Z-score method.
+    Standard threshold is 3.0 (values beyond 3 standard deviations from the mean are removed).
+    """
     try:
-        # Store initial row count
+        # 1. Identify numeric columns
+        numeric_cols, _ = get_column_types(df)
+        
+        # 2. Calculate Z-scores for all numeric columns at once
+        z_scores = (df[numeric_cols] - df[numeric_cols].mean()) / df[numeric_cols].std()
+        
+        # 3. Reporting Logic: Check which columns contain outliers before filtering
+        logger.info(f"--- Outlier Detection Report (Threshold > {threshold}) ---")
+        
+        for col in numeric_cols:
+            # Count how many values in this specific column exceed the threshold
+            col_outliers = (np.abs(z_scores[col]) > threshold).sum()
+            
+            if col_outliers > 0:
+                logger.info(f"Column '{col}': found {col_outliers} outliers.")
+
+        # 4. Create a boolean mask to filter rows
+        # 'all(axis=1)' ensures we keep rows where ALL numeric values are within the threshold
+        mask = (np.abs(z_scores) <= threshold).all(axis=1)
+        
+        # 5. Apply the filter
         initial_count = len(df)
-        # Get mask for valid rows (uses the helper internally)
-        mask = calculate_z_scores(df, threshold)
-        # Filter DataFrame to keep only non-outliers
         df_clean = df[mask]
-       
-        # Calculate number of removed rows
-        removed = initial_count - len(df_clean)
-        # Log if rows were removed
-        if removed > 0:
-            logger.info(f"Removed {removed} outlier rows.")
+        removed_count = initial_count - len(df_clean)
+        
+        # Log the final result
+        if removed_count > 0:
+            logger.info(f"Total rows removed due to outliers: {removed_count}")
+        else:
+            logger.info("No outliers detected in the dataset.")
+            
         return df_clean
    
     except Exception as e:
-        # Log error and re-raise
+        # Log the specific error and stop execution
         logger.error(f"Error removing outliers: {e}")
         raise e

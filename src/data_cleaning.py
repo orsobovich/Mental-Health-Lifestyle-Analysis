@@ -6,9 +6,6 @@ import logging
 # This logger automatically inherits the configuration (format, level) defined in utils/main
 logger = logging.getLogger(__name__)
 
-# Configure logger as per instructions 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
 def get_column_types(df: pd.DataFrame):
     """
@@ -99,46 +96,4 @@ def remove_outliers(df: pd.DataFrame, threshold: float = 3.0) -> pd.DataFrame:
     except Exception as e:
         # Log error and re-raise
         logger.error(f"Error removing outliers: {e}")
-        raise e
-    
-    
-def is_valid_level(series):
-    """
-    Checks if a series contains only valid ordinal levels: 'Low', 'Moderate', 'High'.
-    Returns True if all unique values (ignoring NaNs) are within this set.
-    """
-    try:
-        ordinal_levels = {"Low", "Moderate", "High"}
-        # Create a set of unique values from the series, dropping NaNs first
-        unique_values = set(series.dropna().unique())
-       
-        # Check if the unique values are a subset of the allowed levels
-        is_valid = unique_values.issubset(ordinal_levels)
-       
-        if not is_valid: # help us to understad that the funqtion isn't valid_level without an error, will return the string that dosen't belong to valid_level
-            logger.debug(f"Column contains values outside {ordinal_levels}: {unique_values - ordinal_levels}")
-           
-        return is_valid
-
-
-    except Exception as e:
-        logger.error(f"Error in is_valid_level: {e}")
-        return False
-
-
-def level_to_numeric(series: pd.Series):
-    """
-    Maps categorical levels ('Low', 'Moderate', 'High') to numeric ranks (1, 2, 3).
-    Useful for Spearman's rank correlation analysis.
-    """
-    try:
-        mapping = {"Low": 1, "Moderate": 2, "High": 3}
-        # Perform the mapping
-        mapped_series = series.map(mapping)
-        
-        logger.info("Converted ordinal column to numeric ranks.")
-        return mapped_series
-
-    except Exception as e:
-        logger.error(f"Error in level_to_numeric: {e}")
         raise e

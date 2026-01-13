@@ -4,10 +4,11 @@ from scipy.stats import spearmanr, pearsonr, chi2_contingency
 from src.significance_check import find_sig
 from src.data_cleaning import get_column_types
 from typing import List, Tuple, Optional, Dict
+from src.exploration import numeric_ranges,categorical_frequencies, data_info, descriptive_stats
 import numpy as np
-from src.exploration import data_info, categorical_frequencies
 import pandas as pd
 import logging
+import textwrap
 
 # Initialize the logger for this specific module
 # This logger automatically inherits the configuration (format, level) defined in utils/main
@@ -65,12 +66,12 @@ def plot_correlation(cor_1, cor_2, p_value):
 
 def plot_dataframe_as_table(df: pd.DataFrame, title: str):
     """
-    Renders a pandas DataFrame as a visual table image using Matplotlib.
+    Renders a pandas DataFrame as a visual table.
     Used by other functions to display ANOVA results and Weights.
     """
     try:
         # Create a new figure and a set of axes with size 8x3 inches
-        fig, ax = plt.subplots(figsize=(8, 3))
+        fig, ax = plt.subplots(figsize=(10, 4))
        
         # Turn off the X-axis
         ax.xaxis.set_visible(False)
@@ -98,12 +99,16 @@ def plot_dataframe_as_table(df: pd.DataFrame, title: str):
        
         # Scale the table cells to be larger
         table.scale(1.2, 1.2)
+
+
+        # Automatically wrap long titles into multiple lines (limit to 50 chars per line)
+        wrapped_title = "\n".join(textwrap.wrap(title, width=50))
        
-        # Add a title to the image, with some padding (distance) from the table
-        plt.title(title, fontsize=14, pad=20)
+        # Set the main figure title using the wrapped text
+        plt.suptitle(wrapped_title, fontsize=14, fontweight='bold', y=0.95)
        
         # Automatically adjust subplot parameters to give specified padding
-        plt.tight_layout()
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
        
         # Display the plot window
         plt.show()
@@ -113,6 +118,7 @@ def plot_dataframe_as_table(df: pd.DataFrame, title: str):
         logger.error(f"Failed to plot table '{title}': {e}")
         # Stop the program immediately by raising the error
         raise e
+
 
 
 
@@ -129,7 +135,7 @@ def display_descriptive_table(df: pd.DataFrame, group_col: str, value_col: str):
         summary = df.groupby(group_col)[value_col].agg(['mean', 'std', 'count'])
        
         # Rename the columns
-        summary = summary.rename(columns={'mean': 'Mean', 'std': 'Std Dev', 'count': 'N'})
+        summary = summary.rename(columns={'mean': 'Mean', 'std': 'Std', 'count': 'N'})
        
         # Round the numerical results to 2 decimal places for cleaner display
         summary = summary.round(2)
@@ -148,74 +154,64 @@ def display_descriptive_table(df: pd.DataFrame, group_col: str, value_col: str):
 def plot_distributions(df: pd.DataFrame, group_col: str, value_col: str):
     """
     Plots a boxplot overlaid with a stripplot.
-    Purpose: To visualize the data distribution, median, and spread BEFORE analysis.
     """
     try:
-        # Log the action
         logger.info(f"Plotting distribution of '{value_col}' across '{group_col}'")
        
-        # Create a new figure with size 10x6 inches
         plt.figure(figsize=(10, 6))
        
-        # Draw a Boxplot: Shows the median, quartiles (25%-75%), and potential outliers
-        sns.boxplot(data=df, x=group_col, y=value_col, palette="Set2")
+        sns.boxplot(data=df, x=group_col, y=value_col, hue=group_col, palette="Set2", legend=False)
        
-        # Draw a Stripplot: Shows the actual data points as dots
-        # This helps visualize the sample size and density of the data
         sns.stripplot(data=df, x=group_col, y=value_col, color='black', alpha=0.3, jitter=True)
        
-        # Set the main title of the graph
         plt.title(f"Distribution of {value_col} by {group_col}", fontsize=14)
-       
-        # Label the X-axis (The groups)
         plt.xlabel(group_col, fontsize=12)
-       
-        # Label the Y-axis (The values)
         plt.ylabel(value_col, fontsize=12)
-       
-        # Rotate the group names on the X-axis by 45 degrees if they are long
         plt.xticks(rotation=45)
-       
-        # Adjust layout to prevent labels from being cut off
         plt.tight_layout()
-       
-        # Show the plot
         plt.show()
 
-
     except Exception as e:
-        # Log the specific error that occurred
         logger.error(f"Failed to plot distribution: {e}")
-        # Stop the program immediately by raising the error
-        raise e
 
 
 
-def display_anova_table(anova_table: pd.DataFrame):
+def display_anova_table(anova_table: pd.DataFrame, group_name: str, value_name: str):
     """
     Takes the ANOVA results DataFrame, cleans the raw column names (removes statsmodels wrapping),
     formats the numbers, and displays it as an image.
     """
     try:
-        # 1. Create a copy to avoid modifying the original dataframe
+        # 1. Generate the Title
+        title = f"ANOVA Results: {group_name} vs. {value_name}"
+
+        # 2. Create a copy to avoid modifying the original dataframe
         formatted_table = anova_table.copy()
 
 
-        # 2. Clean the index names (Optimized Regex)
-        # We use the '|' (OR) operator to remove both the starting 'C(Q("'
-        # and the closing '"))' patterns in a single line.
+        # --- Column Renaming Section ---
+        # We rename the technical statsmodels column names to professional presentation names
+        formatted_table = formatted_table.rename(columns={
+            'sum_sq': 'Sum of Squares',  
+            'df': 'df',  
+            'F': 'F-Statistic',          
+            'PR(>F)': 'p-value'          
+        })
+       
+        # Clean index names using Regex (removes statsmodels wrappers)
         formatted_table.index = formatted_table.index.astype(str).str.replace(r'C\(Q\("|"\)\)', '', regex=True)
-
-
-        # Standardize 'Residual' vs 'Residuals' naming if needed
         formatted_table.index = formatted_table.index.str.replace('Residual', 'Residuals')
 
-
-        # 3. Round all numbers to 4 decimal places for better readability
+        # Round numbers
         formatted_table = formatted_table.round(4)
-       
-        # 4. Call the helper function to draw the table image
-        plot_dataframe_as_table(formatted_table, "ANOVA Results Table")
+
+
+        # Replace NaN with a space
+        formatted_table = formatted_table.fillna('')
+
+
+        # 3. Draw table
+        plot_dataframe_as_table(formatted_table, title)
        
     except Exception as e:
         logger.error(f"Failed to display ANOVA table: {e}")
@@ -224,25 +220,29 @@ def display_anova_table(anova_table: pd.DataFrame):
 
 
 
-def display_contrast_weights(weights: dict):
+def display_contrast_weights(weights, group_name: str):
     """
     Takes the weights dictionary, converts it to a DataFrame, and displays it.
     """
     try:
-        # Convert the dictionary {'Group': Weight} into a list of items for the DataFrame
-        df_weights = pd.DataFrame(list(weights.items()), columns=['Group', 'Weight'])
-       
-        # Set the 'Group' column as the index
-        df_weights.set_index('Group', inplace=True)
-       
-        # Call the helper function to draw the table
-        plot_dataframe_as_table(df_weights, "Planned Contrast Weights")
-       
+        # 1. Generate the Title
+        title = f"Contrast Weights for {group_name}"
+
+
+        # 2. Process data
+        if isinstance(weights, (dict, pd.Series)):
+            weights_df = pd.DataFrame(list(weights.items()), columns=['Group', 'Weight'])
+        else:
+            weights_df = weights
+
+
+        # 3. Draw table
+        plot_dataframe_as_table(weights_df, title)
+
+
     except Exception as e:
-        # Log the specific error that occurred
         logger.error(f"Failed to display weights table: {e}")
-        # Stop the program immediately by raising the error
-        raise e
+
     
 
 
@@ -278,4 +278,137 @@ def plot_cleaning_report(df_raw: pd.DataFrame, df_clean: pd.DataFrame):
         
     except Exception as e:
         logger.error(f"Error generating cleaning report: {e}")
-        
+   
+
+def clean_unused_axes(fig, axes, n_items):
+    """Helper to remove empty subplots from the grid."""
+    for j in range(n_items, len(axes)):
+        fig.delaxes(axes[j])
+
+
+def plot_numeric_distributions_grid(df: pd.DataFrame):
+    """
+    Plots a grid of histograms with KDE using precomputed statistics.
+    """
+    try:
+        # Get precomputed numeric statistics (mean, std, etc.)
+        stats_df = numeric_ranges(df)
+
+
+        # Extract numeric column names from stats table index (convert to list)
+        numeric_cols = stats_df.index.tolist()
+        if not numeric_cols:
+            logger.warning("No numeric columns found to plot.")
+            return
+
+
+        # Define round grid size (fixed number of columns)
+        cols = 3
+        rows = int(np.ceil(len(numeric_cols) / cols))
+
+
+        # Create subplot grid and converting a 2D axes grid into a 1D array for iteration
+        fig, axes = plt.subplots(rows, cols, figsize=(15, 5 * rows))
+        axes = axes.flatten()
+
+
+        # Loop over numeric columns and assign each one to a subplot (plot space)
+        for i, col in enumerate(numeric_cols):
+            ax = axes[i]
+
+
+            # Retrieve mean and standard deviation from stats table
+            mean_val = stats_df.loc[col, "mean"]
+            std_val = stats_df.loc[col, "std"]
+
+
+            # Plot histogram with KDE using raw data (shows a smooth estimate of the distribution shape)
+            sns.histplot(df[col], kde=True, ax=ax, stat="density", alpha=0.6)
+
+
+
+
+            # Draw vertical line at the mean
+            ax.axvline(mean_val, linestyle="--", linewidth=2, label=f"Mean: {mean_val:.2f}")
+
+
+            # Highlight the ±1 standard deviation range
+            ax.axvspan(mean_val - std_val, mean_val + std_val, alpha=0.2, label=f"Std Dev: {std_val:.2f}")
+            # Set title, axis labels, and legend
+            ax.set(title=f"Distribution of {col}", xlabel=col, ylabel="Density")
+            ax.legend(fontsize="small")
+
+
+        # Remove extra axes created by the grid that were not used for plotting
+        clean_unused_axes(fig,axes,len(numeric_cols))
+       
+        # Adjust layout and display the figure
+        plt.tight_layout()
+        plt.show()
+
+
+    except Exception as e:
+        # Log error and re-raise for debugging
+        logger.error(f"Error plotting distributions grid: {e}")
+        raise e
+    
+    
+def plot_categorical_pies(df: pd.DataFrame):
+    """
+    Plots a pie chart for each categorical variable showing the distribution of values.
+    """
+    try:
+        # Get frequency data (output-Dictionary of DataFrames)
+        freq_dict = categorical_frequencies(df)
+       
+        if not freq_dict:
+            logger.warning("No categorical variables to plot.")
+            return
+        num_vars = len(freq_dict)
+
+
+        # Define round grid size (fixed number of columns)
+        cols = 3
+        rows = int(np.ceil(num_vars / cols))
+
+
+        # Create subplots
+        fig, axes = plt.subplots(rows, cols, figsize=(15, 5 * rows))
+       
+        # Handle single plot case (where axes is not an array)
+        if num_vars == 1:
+            axes = [axes]
+        else:
+            axes = axes.flatten()
+
+
+        # Iterate over keys (column names) and values (frequency tables)
+        for i, (col_name, df_freq) in enumerate(freq_dict.items()):
+            ax = axes[i]
+           
+           
+            # df_freq is a DataFrame with index (categories) and 'count' column
+            counts = df_freq['count']
+            labels = df_freq.index
+           
+           
+            # Plot the pie chart-autopct adds percentages, startangle rotates the chart to start from top
+            ax.pie(counts, labels=labels, autopct='%1.1f%%', startangle=90, colors=plt.cm.Pastel1.colors)
+           
+            # Set title for each subplot
+            ax.set_title(f'Distribution of {col_name}', fontsize=12, fontweight='bold')
+
+
+        # Remove extra axes created by the grid that were not used for plotting
+        clean_unused_axes(fig,axes,num_vars)
+
+
+        plt.tight_layout()
+        plt.show()
+       
+        logger.info("Categorical pie charts plotted successfully.")
+
+
+    except Exception as e:
+        logger.error(f"Error plotting categorical pies: {e}")
+        raise e     

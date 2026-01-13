@@ -21,6 +21,8 @@ def heat_map(df):
     plt.figure(figsize=(10, 8))
     sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f")
     plt.title('Correlation Heatmap')
+    plt.xticks(rotation=30)
+    plt.tight_layout()
     plt.show()
 
 

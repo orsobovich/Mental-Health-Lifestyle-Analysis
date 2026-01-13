@@ -174,26 +174,6 @@ df = load_dataset('Mental_Health_Lifestyle_Dataset.csv')
 #data_cleaning.py
 
 
-#correlation       
-logging.info("correlation between Stress Level and Sleep Hours:")        
-calculate_correlation(df['Stress Level'], df['Sleep Hours'])
-
-logging.info("correlation between Age and Sleep Hours:")
-calculate_correlation(df["Age"], df["Sleep Hours"]) 
-
-logging.info("correlation between Social Interaction Score and Stress Level:")
-calculate_correlation(df["Social Interaction Score"], df["Stress Level"])
-
-logging.info("correlation between Age and Social Interaction Score:")
-calculate_correlation(df["Age"], df["Social Interaction Score"])
-
-corr, p_val = spearmanr(df['Sleep Hours'], df['Stress Level'])
-logger.info(f"Sleep vs Stress: corr={corr:.2f}, p={p_val:.4f}")
-
-plot_correlation(df['Sleep Hours'], df['Stress Level'], p_val)
-
-
-
 #anova
 
 

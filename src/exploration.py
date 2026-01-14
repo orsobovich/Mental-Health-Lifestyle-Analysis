@@ -30,13 +30,9 @@ def data_info(df: pd.DataFrame):
         # Build a DataFrame where each row represents one column from the original dataset
         info = pd.DataFrame({
             "dtype": df.dtypes.astype(str),
-            "missing_count": df.isna().sum(),
-            "missing_percent": (df.isna().mean() * 100).round(2),
             "unique_values": df.nunique(dropna=True),
         })
 
-        # Sort columns so that variables with the highest percentage of missing values appear first
-        info = info.sort_values("missing_percent", ascending=False)
        
         # Create the overview string
         overview = f'The number of participants is "{df.shape[0]}" and the number of variables is "{df.shape[1]}"'

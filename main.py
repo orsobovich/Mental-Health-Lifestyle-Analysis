@@ -208,7 +208,7 @@ def main():
         contrast_results_2 = run_planned_contrast(df_clean, group_col, value_col, weights_2)
        
         if contrast_results_2:
-             logger.info(f"Contrast 2 Result (Healthy vs Conditions): t={contrast_results_2['t_statistic']:.2f}, p={contrast_results_2['p_value']:.4f}")
+             logger.info(f"Contrast Analysis Result: t={contrast_results_2['t_statistic']:.2f}, p={contrast_results_2['p_value']:.4f}")
        
     except Exception as e:
         logger.error(f"Could not run contrast analysis for Hypothesis 2: {e}")

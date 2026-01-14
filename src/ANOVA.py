@@ -163,9 +163,7 @@ def run_planned_contrast(data: pd.DataFrame, group_col: str, value_col: str, con
         # Run T-Test
         t_result = model.t_test(contrast_vector)
         t_stat, p_val = t_result.tvalue.item(), t_result.pvalue.item()
-        
-        logger.info(f"Contrast Result: t={t_stat:.3f}, p={p_val:.4f}")
-        
+                
         return {
             "t_statistic": t_stat,
             "degrees_of_freedom": t_result.df_denom,

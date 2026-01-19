@@ -58,12 +58,12 @@ def calculate_correlation(var_1, var_2):
 
     except ValueError as e:
         logging.error(f"Value error in correlation: {e}")
-        raise
+        raise e
 
 
     except Exception as e: # catch all the exception except ValueError
         logging.exception("Unexpected error in correlation")
-        raise
+        raise e
        
     return var_1, var_2, corr, p_value
 

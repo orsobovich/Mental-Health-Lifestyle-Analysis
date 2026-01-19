@@ -41,3 +41,11 @@ def load_dataset(filename):
     except Exception as e:
         logging.error(f"Unexpected error while loading dataset: {e}")
         raise RuntimeError(f"Error loading dataset: {e}")
+
+def find_sig(p_value, alpha=0.05):
+    if p_value < alpha:
+        logging.info(f"p-value is significant: {p_value}")
+        return True
+    else:
+        logging.info(f"p-value isn't significant: {p_value}")
+        return False

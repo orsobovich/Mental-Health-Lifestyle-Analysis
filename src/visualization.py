@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import spearmanr, pearsonr, chi2_contingency
-from src.significance_check import find_sig
+from src.utils import find_sig
 from src.data_cleaning import get_column_types
 from typing import List, Tuple, Optional, Dict
 from src.exploration import numeric_ranges,categorical_frequencies, data_info, descriptive_stats
@@ -13,7 +13,6 @@ import textwrap
 # Initialize the logger for this specific module
 # This logger automatically inherits the configuration (format, level) defined in utils/main
 logger = logging.getLogger(__name__)
-        
 
 
 def heat_map(df):
@@ -118,7 +117,6 @@ def plot_dataframe_as_table(df: pd.DataFrame, title: str):
         logger.error(f"Failed to plot table '{title}': {e}")
         # Stop the program immediately by raising the error
         raise e
-
 
 
 

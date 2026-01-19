@@ -6,6 +6,26 @@ import logging
 # This logger automatically inherits the configuration (format, level) defined in utils/main
 logger = logging.getLogger(__name__)
 
+def remove_duplicates(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Removes duplicate rows from the dataset.
+    Logs the number of duplicates found and removed.
+    """
+    try:
+        initial_count = len(df)
+        df = df.drop_duplicates()
+        dropped_count = initial_count - len(df)
+        
+        if dropped_count > 0:
+            logger.info(f"Removed {dropped_count} duplicate rows.")
+        else:
+            logger.info("No duplicate rows found.")
+            
+        return df
+        
+    except Exception as e:
+        logger.error(f"Error removing duplicates: {e}")
+        raise e
 
 def get_column_types(df: pd.DataFrame):
     """

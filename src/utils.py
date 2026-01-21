@@ -13,22 +13,26 @@ def setup_logging():
 def load_dataset(filename):
     """
     Loads a dataset from a given filename or absolute path.
-    If a relative filename is provided, the file is searched for
-    in the project root directory.
+    Handles relative paths by resolving them against the project root.
     """
     try:
         logging.info("Starting dataset loading")
 
+        # Resolve project root dynamically (assumes script is in src/)
         base_dir = Path(__file__).resolve().parents[1]
         data_path = Path(filename)
 
+        # Construct absolute path if a relative one is provided
         if not data_path.is_absolute():
             data_path = base_dir / filename
 
         logging.info(f"Resolved dataset path: {data_path}")
 
+        # Define specific strings to be treated as NaN
+        # In our dataset we want to avoid converting 'None' in the Mental Health Condition into a null value
         missing_values = ["", " ", "NaN", "nan", "NA", "null"]
         
+        # Load CSV using the custom missing values list
         df = pd.read_csv(data_path, na_values=missing_values, keep_default_na=False)
 
         logging.info("Dataset loaded successfully")
@@ -41,7 +45,8 @@ def load_dataset(filename):
     except Exception as e:
         logging.error(f"Unexpected error while loading dataset: {e}")
         raise RuntimeError(f"Error loading dataset: {e}")
-
+    
+    
 def find_sig(p_value, alpha=0.05):
     if p_value < alpha:
         logging.info(f"p-value is significant: {p_value}")

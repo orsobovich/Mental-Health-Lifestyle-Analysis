@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from src.significance_check import find_sig
+from src.utils import find_sig
 from src.correlation import calculate_correlation, is_valid_level, level_to_numeric
 
 

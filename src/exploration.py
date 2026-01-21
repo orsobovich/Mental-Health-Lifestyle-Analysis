@@ -52,46 +52,51 @@ def data_info(df: pd.DataFrame):
 
 def descriptive_stats(df: pd.DataFrame):
     """
-    Computes descriptive statistics separately for numeric and categorical variables.
-    Returns two DataFrames: numeric_stats and categorical_stats.
+    Compute descriptive statistics for numeric and categorical variables separately.
+    Returns two DataFrames:
+    1. numeric_stats
+    2. categorical_stats
     """
     try:
-        # Validate input DataFrame
+        # Validate input
         if df is None or df.empty:
             raise ValueError("DataFrame is empty or None")
 
-        # Split columns by type: numeric vs categorical
+        # Identify numeric and non-numeric columns
         numeric_cols, non_numeric_cols = get_column_types(df)
 
-        # -------- Numeric variables --------
+        # ----- Numeric variables -----
         if len(numeric_cols) > 0:
-            # Basic statistics: count, mean, std, min, quartiles, max
-            numeric_stats = df[numeric_cols].describe().T
+            # Compute descriptive statistics (mean, std, min, quartiles, max)
+            # 'count' is explicitly removed before transposing
+            numeric_stats = df[numeric_cols].describe().drop('count').T
         else:
-            # No numeric columns found
+            # Handle case with no numeric columns
             numeric_stats = pd.DataFrame()
 
-        # -------- Categorical variables --------
+        # ----- Categorical variables -----
         if len(non_numeric_cols) > 0:
-            # Frequency-based summary: count, unique, top, freq
+            # Compute frequency-based statistics (count, unique, top, freq)
+            # To remove 'count' here as well, apply .drop('count') after describe()
             categorical_stats = df[non_numeric_cols].describe(include="all").T
         else:
-            # No categorical columns found
+            # Handle case with no categorical columns
             categorical_stats = pd.DataFrame()
 
-        # Log successful execution
+        # Log successful execution with column counts
         logger.info(
             "Descriptive stats computed (numeric=%d, categorical=%d)",
             len(numeric_cols), len(non_numeric_cols)
         )
 
-        # Return both summary tables
+        # Return summary tables
         return numeric_stats, categorical_stats
 
     except Exception as e:
-        # Log and re-raise error for pytest or caller
+        # Log error and re-raise for external handling or testing
         logger.error("Error in descriptive_stats: %s", e)
         raise e
+
 
 
 def categorical_frequencies(df: pd.DataFrame, top_n: int = 10, add_other: bool = True):

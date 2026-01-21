@@ -216,8 +216,6 @@ def display_anova_table(anova_table: pd.DataFrame, group_name: str, value_name: 
         raise e
 
 
-
-
 def display_contrast_weights(weights, group_name: str):
     """
     Takes the weights dictionary, converts it to a DataFrame, and displays it.
@@ -240,8 +238,6 @@ def display_contrast_weights(weights, group_name: str):
 
     except Exception as e:
         logger.error(f"Failed to display weights table: {e}")
-
-    
 
 
 def plot_cleaning_report(df_raw: pd.DataFrame, df_clean: pd.DataFrame):

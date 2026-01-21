@@ -1,13 +1,11 @@
 import logging
 import pandas as pd
 import numpy as np
-from scipy.stats import spearmanr, pearsonr
 
 # --- Custom Modules Imports ---
 from src.utils import setup_logging, load_dataset
 from src.data_cleaning import (
     handle_missing_values_hybrid, 
-    get_column_types, 
     remove_outliers,
     remove_duplicates
 )
@@ -17,8 +15,6 @@ from src.exploration import (
 )
 from src.correlation import (
     calculate_correlation, 
-    is_valid_level, 
-    level_to_numeric
 )
 from src.ANOVA import (
     create_contrast_weights, 
@@ -48,11 +44,14 @@ def main():
     
     Workflow Steps:
     1. Data Loading & Preprocessing (Cleaning, Outliers)
-    2. Exploratory Data Analysis (EDA - Correlations, Distributions)
-    3. Hypothesis 1: Diet Type vs. Happiness Score (ANOVA & Contrast)
-    4. Hypothesis 2: Mental Health Condition vs. Social Interaction (ANOVA & Contrast)
+    2. Exploratory Data Analysis (General EDA)
+    3. Hypothesis Testing: Correlations (Sleep vs. Stress)
+    4. Hypothesis Testing: Diet Type vs. Happiness (ANOVA & Contrast)
+    5. Hypothesis Testing: Mental Health vs. Social Interaction (ANOVA & Contrast)
     """
+    logger.info("===============================================================")
     logger.info("Starting Analysis Pipeline...")
+    logger.info("===============================================================")
 
     # ==============================================================================
     # Step 1: Data Loading & Preprocessing
@@ -64,97 +63,102 @@ def main():
     # 1. Load Data
     df = load_dataset(filename)
     
+    # 2. Remove Duplicates (Critical first step)
+    df = remove_duplicates(df)
+    
     # Keep a raw copy for "Before vs After" visualization
     df_raw_for_plot = df.copy()
     
-    # 2. Hybrid Cleaning (Impute numeric, Drop categorical missing)
+    # 3. Hybrid Cleaning (Impute numeric, Drop categorical missing)
     df_clean = handle_missing_values_hybrid(df)
     
-    # 3. Outlier Removal (Z-score > 3.0)
+    # 4. Outlier Removal (Z-score > 3.0)
     df_clean = remove_outliers(df_clean, threshold=3.0)
     
-    # 4. Visualize Cleaning Impact
+    # 5. Visualize Cleaning Impact
     plot_cleaning_report(df_raw_for_plot, df_clean)
 
     # ==============================================================================
-    # Step 2: Visualization of Correlations (EDA + Correlation Hypotheses)
+    # Step 2: Exploratory Data Analysis (General EDA)
     # ==============================================================================
-    logger.info("--- Step 2: Visualizing Correlations & EDA ---")
+    logger.info("===============================================================")
+    logger.info("--- Step 2: Exploratory Data Analysis (General Overview) ---")
+    logger.info("===============================================================")
     
-    # 1. General Statistics Overview
-    # data_info returns (Summary String, Info DataFrame)
+    # (2.1) Statistics Overview
+    logger.info("(2.1) Generating General Statistics...")
     summary_text, info_df = data_info(df_clean)
-    
-    # The summary is already a string, so we just log it directly
     logger.info(f"Dataset Summary:\n{summary_text}")
-    
-    # The info_df is a DataFrame, so we use .to_string() to format it nicely
     logger.info(f"Detailed Data Info:\n{info_df.to_string()}")
     
-    # descriptive_stats returns (Numeric DataFrame, Categorical DataFrame)
     numeric_stats, categorical_stats = descriptive_stats(df_clean)
-    
     logger.info(f"Numeric Statistics:\n{numeric_stats.to_string()}")
     logger.info(f"Categorical Statistics:\n{categorical_stats.to_string()}")
     
-    # 2. General Plots
-    logger.info("Generating Categorical Pie Charts...")
+    # (2.2) Visualizations
+    logger.info("(2.2) Generating Categorical Pie Charts...")
     plot_categorical_pies(df_clean)
     
-    logger.info("Generating Numeric Distributions Grid...")
+    logger.info("(2.2) Generating Numeric Distributions Grid...")
     plot_numeric_distributions_grid(df_clean)
     
-    # 3. Correlation Heatmap
-    logger.info("Generating Correlation Heatmap for Numeric Variables")
+    logger.info("(2.2) Generating Global Correlation Heatmap...")
     heat_map(df_clean)
     
-    # --------------------------------------------------------------------------
-    # A. Specific Check: Sleep Hours vs. Stress Level 
-    # Hypothesis: More sleep correlates with less stress.
-    # --------------------------------------------------------------------------
+    # ==============================================================================
+    # Step 3: Hypothesis Testing - Correlations
+    # ==============================================================================
+    logger.info("===============================================================")
+    logger.info("--- Step 3: Hypothesis Testing - Correlations ---")
+    logger.info("===============================================================")
+    
+    # A. Sleep Hours vs. Stress Level (Hypothesis: More sleep -> Less stress)
+    logger.info("(3.1) Testing Hypothesis: Sleep Hours vs. Stress Level")
     sleep_col = df_clean['Sleep Hours']
     stress_col = df_clean['Stress Level']
     
-    # Spearman correlation (Stress Level is ordinal)
-    corr1, p_val1 = spearmanr(sleep_col, stress_col)
-    logger.info(f"Hypothesis Check (Sleep vs Stress): r={corr1:.3f}, p={p_val1:.4f}")
+    var_1, var_2, corr, p_value = calculate_correlation(sleep_col, stress_col)
+    
     
     # Plot only if significant
-    plot_correlation(sleep_col, stress_col, p_val1)
+    plot_correlation(var_1, var_2, p_value)
     
-    # --------------------------------------------------------------------------
-    # B. Specific Check: Happiness Score vs. Social Interaction Score
-    # --------------------------------------------------------------------------
+    # B. Happiness vs. Social Interaction (Secondary Check)
+    logger.info("(3.2) Testing Check: Happiness vs. Social Interaction")
     happiness_col = df_clean['Happiness Score']
     social_col = df_clean['Social Interaction Score']
     
-    corr2, p_val2 = spearmanr(happiness_col, social_col)
-    logger.info(f"Hypothesis Check (Happiness vs Social Interaction): r={corr2:.3f}, p={p_val2:.4f}")
+    var_3,var_4,corr_2,p_value_2= calculate_correlation(happiness_col, social_col)
     
-    plot_correlation(happiness_col, social_col, p_val2)
+    # Plot only if significant
+    plot_correlation(var_3, var_4, p_value_2)
 
     # ==============================================================================
-    # Step 3: Hypothesis 1 - Diet Type vs. Happiness Score
-    # ==============================================================================
-    logger.info("--- Step 3: Hypothesis 1 (Diet vs Happiness) ---")
-   
+    # Step 4: Hypothesis Testing - Diet Type vs. Happiness
+    # ==============================================================================   
+    logger.info("===============================================================")
+    logger.info("--- Step 4: Hypothesis Testing (Diet Type vs. Happiness) ---")
+    logger.info("===============================================================")
+    
     group_col = 'Diet Type'
     value_col = 'Happiness Score'
 
-    # A. Visual Inspection
+    # (4.1) Visual Inspection
+    logger.info("(4.1) Visualizing Distributions (Boxplots)...")
     plot_distributions(df_clean, group_col, value_col)
 
-    # B. Descriptive Stats Table
+    # (4.2) Descriptive Stats
     display_descriptive_table(df_clean, group_col, value_col)
 
-    # C. One-Way ANOVA
+    # (4.3) One-Way ANOVA
+    logger.info("(4.3) Running One-Way ANOVA...")
     anova_results = run_one_way_anova(df_clean, group_col, value_col)
     
     if anova_results is not None:
         display_anova_table(anova_results, group_col, value_col)
 
-    # D. Planned Contrast Analysis
-    # Hypothesis: Plant-Based (Vegan, Vegetarian) > Others (Junk, Balanced, Keto)
+    # (4.4) Planned Contrast Analysis
+    logger.info("(4.4) Running Planned Contrast (Plant-Based vs. Others)...")
     plant_based = ['Vegan', 'Vegetarian']
     others = ['Junk Food', 'Balanced', 'Keto']
    
@@ -165,41 +169,43 @@ def main():
         contrast_results = run_planned_contrast(df_clean, group_col, value_col, weights)
         
         if contrast_results:
-             logger.info(f"Contrast 1 Result (Plant-Based vs Others): t={contrast_results['t_statistic']:.2f}, p={contrast_results['p_value']:.4f}")
+             logger.info(f"      Contrast Result: t={contrast_results['t_statistic']:.2f}, p={contrast_results['p_value']:.4f}")
        
     except Exception as e:
-        logger.error(f"Could not run contrast visualization for Hypothesis 1: {e}")
+        logger.error(f"Error in Hypothesis 1 Contrast: {e}")
 
     # ==============================================================================
-    # Step 4: Hypothesis 2 - Mental Health Condition vs. Social Interactions
+    # Step 5: Hypothesis Testing - Mental Health vs. Social Interactions
     # ==============================================================================
-    logger.info("--- Step 4: Hypothesis 2 (Mental Health vs Social Interactions) ---")
+    logger.info("===============================================================")
+    logger.info("--- Step 5: Hypothesis Testing (Mental Health vs. Social) ---")
+    logger.info("===============================================================")
    
     group_col = 'Mental Health Condition'
     value_col = 'Social Interaction Score'
 
-    # A. Visual Inspection
+    # (5.1) Visual Inspection
+    logger.info("(5.1) Visualizing Distributions...")
     plot_distributions(df_clean, group_col, value_col)
 
-    # B. Descriptive Stats Table
+    # (5.2) Descriptive Stats
     display_descriptive_table(df_clean, group_col, value_col)
 
-    # C. One-Way ANOVA
+    # (5.3) One-Way ANOVA
+    logger.info("(5.3) Running One-Way ANOVA...")
     anova_results_2 = run_one_way_anova(df_clean, group_col, value_col)
     
     if anova_results_2 is not None:
         display_anova_table(anova_results_2, group_col, value_col)
 
-    # D. Planned Contrast Analysis
-    # Hypothesis: 'None' (Healthy) > 'Condition' (Depression, Anxiety, etc.)
+    # (5.4) Planned Contrast Analysis
+    logger.info("(5.4) Running Planned Contrast (Healthy vs. Conditions)...")
     try:
         # Define groups dynamically
         healthy_group = ['None']
         all_groups = df_clean[group_col].unique()
         condition_groups = [g for g in all_groups if g != 'None']
        
-        logger.info(f"Contrast Groups -> Healthy: {healthy_group} vs. Conditions: {condition_groups}")
-
         # Create & Display Weights
         weights_2 = create_contrast_weights(healthy_group, condition_groups)
         display_contrast_weights(weights_2, group_col)
@@ -208,12 +214,14 @@ def main():
         contrast_results_2 = run_planned_contrast(df_clean, group_col, value_col, weights_2)
        
         if contrast_results_2:
-             logger.info(f"Contrast Analysis Result: t={contrast_results_2['t_statistic']:.2f}, p={contrast_results_2['p_value']:.4f}")
+             logger.info(f"      Contrast Result: t={contrast_results_2['t_statistic']:.2f}, p={contrast_results_2['p_value']:.4f}")
        
     except Exception as e:
-        logger.error(f"Could not run contrast analysis for Hypothesis 2: {e}")
+        logger.error(f"Error in Hypothesis 2 Contrast: {e}")
 
+    logger.info("===============================================================")
     logger.info("Analysis Pipeline Completed Successfully.")
+    logger.info("===============================================================")
 
 
 if __name__ == "__main__":

@@ -50,9 +50,17 @@ def handle_missing_values_hybrid(df: pd.DataFrame):
         # Use the helper function to identify column types
         numeric_cols, non_numeric_cols = get_column_types(df)
 
-        # Fill missing values in numeric columns with the column mean
-        df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
-        logger.info(f"Filled NaNs in numeric columns {list(numeric_cols)} with their means.")
+        # Check if there are any NaNs in numeric columns before filling
+        # .any().any() checks if there is at least one True in the whole subset
+        if df[numeric_cols].isna().any().any():
+            # Fill missing values in numeric columns with the column mean
+            df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
+            # Log only if values were actually filled
+            logger.info(f"Filled NaNs in numeric columns {list(numeric_cols)} with their means.")
+        else:
+            # Log if no numeric NaNs were found
+            logger.info("No missing values found in numeric columns.")
+
 
         # Handle non-numeric columns: store row count before dropping
         rows_before = len(df)

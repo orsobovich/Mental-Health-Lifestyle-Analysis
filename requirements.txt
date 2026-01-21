@@ -1,7 +1,12 @@
+# Project Name: Mental Health & Lifestyle Analysis
+
+# --- Required Dependencies ---
 pandas
 numpy
 matplotlib
 seaborn
 scipy
 statsmodels
+
+# --- Development Dependencies ---
 pytest

@@ -1,4 +1,3 @@
-
 from pathlib import Path
 from typing import Dict, Tuple
 import numpy as np
@@ -96,7 +95,6 @@ def descriptive_stats(df: pd.DataFrame):
         # Log error and re-raise for external handling or testing
         logger.error("Error in descriptive_stats: %s", e)
         raise e
-
 
 
 def categorical_frequencies(df: pd.DataFrame, top_n: int = 10, add_other: bool = True):

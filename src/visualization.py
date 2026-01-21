@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy.stats import spearmanr, pearsonr, chi2_contingency
 from src.utils import find_sig
 from src.data_cleaning import get_column_types
 from typing import List, Tuple, Optional, Dict
@@ -24,7 +23,6 @@ def heat_map(df):
     plt.xticks(rotation=30)
     plt.tight_layout()
     plt.show()
-
 
 
 def plot_correlation(cor_1, cor_2, p_value):
@@ -61,7 +59,6 @@ def plot_correlation(cor_1, cor_2, p_value):
         # Stop the program immediately by raising the error
         raise e
    
-
 
 def plot_dataframe_as_table(df: pd.DataFrame, title: str):
     """
@@ -119,7 +116,6 @@ def plot_dataframe_as_table(df: pd.DataFrame, title: str):
         raise e
 
 
-
 def display_descriptive_table(df: pd.DataFrame, group_col: str, value_col: str):
     """
     Calculates and displays a summary table with Mean, Std, and Count for each group.
@@ -148,7 +144,6 @@ def display_descriptive_table(df: pd.DataFrame, group_col: str, value_col: str):
         raise e
 
 
-
 def plot_distributions(df: pd.DataFrame, group_col: str, value_col: str):
     """
     Plots a boxplot overlaid with a stripplot.
@@ -171,7 +166,6 @@ def plot_distributions(df: pd.DataFrame, group_col: str, value_col: str):
 
     except Exception as e:
         logger.error(f"Failed to plot distribution: {e}")
-
 
 
 def display_anova_table(anova_table: pd.DataFrame, group_name: str, value_name: str):

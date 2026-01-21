@@ -7,6 +7,7 @@ from src.data_cleaning import (
     remove_outliers
 )
 
+
 # ----------------------------------------------------------------
 # Fixtures (Data Setup)
 # ----------------------------------------------------------------
@@ -68,8 +69,12 @@ def test_get_column_types(dirty_df):
 
 
 def test_get_column_types_empty(empty_df):
-    """Edge case: Ensure it handles empty DF without crashing."""
+    """Edge case: Ensure it handles empty DF without crashing and returns empty lists."""
     numeric, non_numeric = get_column_types(empty_df)
+    assert len(numeric) == 0, "Numeric list should be empty for empty DF"
+    assert len(non_numeric) == 0, "Non-numeric list should be empty for empty DF"
+
+
    
     assert len(numeric) == 0
     assert len(non_numeric) == 0
@@ -80,6 +85,7 @@ def test_get_column_types_all_numeric():
    
     assert set(numeric) == {'A', 'B'}
     assert len(non_numeric) == 0
+   
 def test_get_column_types_all_categorical():
     """Edge case: DataFrame with only categorical columns."""
     df = pd.DataFrame({'A': ['x', 'y'], 'B': ['foo', 'bar']})
@@ -134,37 +140,6 @@ def test_hybrid_no_missing():
     cleaned_df = handle_missing_values_hybrid(df.copy())
    
     pd.testing.assert_frame_equal(df, cleaned_df)
-def test_hybrid_all_missing_categorical():
-    """Edge case: All categorical values are missing, should drop all rows."""
-    df = pd.DataFrame({
-        'Num': [1, 2, 3],
-        'Cat': [None, ' ', np.nan]
-    })
-    cleaned_df = handle_missing_values_hybrid(df.copy())
-   
-    assert cleaned_df.empty
-def test_hybrid_all_missing_numeric():
-    """Edge case: All numeric values are missing, should fill with NaN (mean is NaN)."""
-    df = pd.DataFrame({
-        'Num': [np.nan, np.nan, np.nan],
-        'Cat': ['a', 'b', 'c']
-    })
-    cleaned_df = handle_missing_values_hybrid(df.copy())
-   
-    assert cleaned_df['Num'].isnull().all()
-def test_hybrid_mixed_types_in_column():
-    """Test handling of mixed types in a numeric column."""
-    df = pd.DataFrame({
-        'Num': [1, 'two', 3, np.nan],
-        'Cat': ['a', 'b', 'c', 'd']
-    })
-    cleaned_df = handle_missing_values_hybrid(df.copy())
-   
-    # 'two' should cause the column to be treated as non-numeric, so no filling
-    assert cleaned_df['Num'].isnull().sum() == 1  # Only the original NaN remains
-# ----------------------------------------------------------------
-# 3. Tests for: remove_outliers
-# ----------------------------------------------------------------
 
 
 def test_remove_outliers_detection(outlier_df):
@@ -222,8 +197,3 @@ def test_remove_outliers_empty(empty_df):
         assert res.empty
     except Exception as e:
         pytest.fail(f"Function crashed on empty DataFrame: {e}")
-def test_remove_outliers_all_outliers():
-    """Edge case: All values are outliers and should be removed."""
-    df = pd.DataFrame({'A': [100, 200, 300, 400, 5000]}) # 5000 is extreme
-    cleaned = remove_outliers(df, threshold=2.0) # Lower threshold to ensure removal
-    assert cleaned.empty

@@ -27,6 +27,7 @@ def remove_duplicates(df: pd.DataFrame) -> pd.DataFrame:
         logger.error(f"Error removing duplicates: {e}")
         raise e
 
+
 def get_column_types(df: pd.DataFrame):
     """
     Helper function to split columns into numeric and categorical.

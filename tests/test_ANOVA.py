@@ -9,6 +9,9 @@ from src.ANOVA import (
     run_planned_contrast
 )
 
+# NOTE: In this test file, synthetic data is created OUTSIDE the test functions # using @pytest.fixture.
+# This allows the same dataset to be reused across # multiple tests (e.g., for both ANOVA and Planned Contrasts).
+
 # ----------------------------------------------------------------
 # Fixtures (Data Setup)
 # ----------------------------------------------------------------

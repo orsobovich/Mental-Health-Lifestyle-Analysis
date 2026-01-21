@@ -4,6 +4,8 @@ import numpy as np
 from src.utils import find_sig
 from src.correlation import calculate_correlation, is_valid_level, level_to_numeric
 
+# NOTE: In this test file, synthetic data is created INSIDE each test function.
+
 
 def test_on_valid_levels_should_return_true():
     test_1=pd.Series(['Low', 'Moderate', 'High', 'Moderate', 'Low'], name="satisfaction")

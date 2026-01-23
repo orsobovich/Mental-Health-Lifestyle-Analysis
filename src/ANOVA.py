@@ -135,42 +135,55 @@ def create_contrast_weights(positive_groups: list, negative_groups: list):
 
 def run_planned_contrast(data: pd.DataFrame, group_col: str, value_col: str, contrast_weights: dict):
     """
-    Runs a planned contrast using OLS regression (statsmodels).
-    Automatic handling of means and standard errors via linear hypothesis test.
+    Runs a planned contrast using OLS regression (without intercept).
+    
+    Args:
+        data (pd.DataFrame): Dataset.
+        group_col (str): Categorical grouping column.
+        value_col (str): Continuous target column.
+        contrast_weights (dict): Mapping of {Group: Weight} (sum must be 0).
+        
+    Returns:
+        dict: t-statistic, p-value, and degrees of freedom.
     """
-
     try:
         logger.info(f"Starting planned contrast for '{value_col}' by '{group_col}'")
         
-        # Compute means (Log means before analysis - for consistency)
+        # 1. Log means for validation
         compute_group_means(data, group_col, value_col)
         
-        # Validation
+        # 2. Validate groups exist
         missing = set(contrast_weights) - set(data[group_col].unique())
         if missing:
             raise KeyError(f"Groups missing from dataset: {missing}")
         
-        # Fit OLS Model
+        # 3. Fit OLS Model (No Intercept)
+        # CRITICAL: We use "- 1" to remove the intercept.
+        # This forces the model coefficients to represent the absolute group means directly,
+        # rather than the difference from a reference group.
         formula = f"Q('{value_col}') ~ C(Q('{group_col}')) - 1"
         model = smf.ols(formula, data=data).fit()
         
-        # Map Weights to model parameters
+        # 4. Map Weights to Model Parameters (The "Alignment" Step)
+        # Statsmodels creates internal parameter names (e.g., "C(Diet Type)[T.Vegan]").
+        # We cannot rely on the dictionary order. This logic iterates through the 
+        # model's actual parameters and fetches the correct weight for each group.
         contrast_vector = [
             next((w for g, w in contrast_weights.items() if f"[{g}]" in p or f"[T.{g}]" in p), 0)
             for p in model.params.index
         ]
         
-        # Run T-Test
+        # 5. Run Linear Hypothesis Test (T-Test)
+        # Performs a t-test on the linear combination of coefficients (means) based on the vector
         t_result = model.t_test(contrast_vector)
-        t_stat, p_val = t_result.tvalue.item(), t_result.pvalue.item()
-                
+        
+        
         return {
-            "t_statistic": t_stat,
+            "t_statistic": t_result.tvalue.item(),
             "degrees_of_freedom": t_result.df_denom,
-            "p_value": p_val
+            "p_value": t_result.pvalue.item()
         }
         
     except Exception as e:
-        # Log and raise to stop main.py
-        logger.error(f"Error in planned contrast: {e}")
+        logger.error(f"Planned contrast failed: {e}")
         raise e

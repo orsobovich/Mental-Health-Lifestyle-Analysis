@@ -7,6 +7,7 @@ from src.data_cleaning import (
     remove_outliers
 )
 
+# NOTE: In this test file, synthetic data is created OUTSIDE the test functions # using @pytest.fixture.
 
 # ----------------------------------------------------------------
 # Fixtures (Data Setup)

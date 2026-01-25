@@ -4,7 +4,8 @@ import numpy as np
 from src.data_cleaning import (
     get_column_types,
     handle_missing_values_hybrid,
-    remove_outliers
+    remove_outliers,
+    remove_duplicates
 )
 
 # NOTE: In this test file, synthetic data is created OUTSIDE the test functions # using @pytest.fixture.
@@ -12,7 +13,6 @@ from src.data_cleaning import (
 # ----------------------------------------------------------------
 # Fixtures (Data Setup)
 # ----------------------------------------------------------------
-
 
 @pytest.fixture
 def dirty_df():
@@ -41,12 +41,29 @@ def outlier_df():
         'Value': [10, 10, 10, 10, 1000],
         'Group': ['A', 'A', 'A', 'A', 'A']
     })
+    
+@pytest.fixture
+def duplicate_df():
+    """
+    DataFrame specifically for testing duplicate removal.
+    Contains:
+    - 2 identical rows (should become 1)
+    - 1 unique row
+    Total rows: 3 -> Expected after cleaning: 2
+    """
+    return pd.DataFrame({
+        'ID': [1, 1, 2],
+        'Name': ['Alice', 'Alice', 'Bob'],
+        'Score': [100, 100, 90]
+    })
 
 
 @pytest.fixture
 def empty_df():
     """Empty DataFrame for edge case testing."""
     return pd.DataFrame()
+
+
 
 
 # ----------------------------------------------------------------
@@ -198,3 +215,90 @@ def test_remove_outliers_empty(empty_df):
         assert res.empty
     except Exception as e:
         pytest.fail(f"Function crashed on empty DataFrame: {e}")
+
+
+# ----------------------------------------------------------------
+# 3. Tests for: remove_duplicates
+# ----------------------------------------------------------------
+
+
+@pytest.fixture
+def duplicate_df():
+    """
+    DataFrame specifically for testing duplicate removal.
+    Contains:
+    - 2 identical rows (should become 1)
+    - 1 unique row
+    Total rows: 3 -> Expected after cleaning: 2
+    """
+    return pd.DataFrame({
+        'ID': [1, 1, 2],
+        'Name': ['Alice', 'Alice', 'Bob'],
+        'Score': [100, 100, 90]
+    })
+
+
+# ----------------------------------------------------------------
+# Tests for: remove_duplicates
+# ----------------------------------------------------------------
+
+
+def test_remove_duplicates_found(duplicate_df):
+    """Test that exact duplicates are removed correctly."""
+    # Before: 3 rows (2 are identical)
+    cleaned_df = remove_duplicates(duplicate_df.copy())
+    
+    # After: Should have 2 rows
+    assert len(cleaned_df) == 2
+    
+    # Verify indices or values are unique
+    assert cleaned_df.duplicated().sum() == 0
+
+
+def test_remove_duplicates_none():
+    """Test that a DataFrame with no duplicates remains unchanged."""
+    df = pd.DataFrame({
+        'A': [1, 2, 3],
+        'B': ['x', 'y', 'z']
+    })
+    
+    cleaned_df = remove_duplicates(df.copy())
+    
+    # Check that nothing changed
+    pd.testing.assert_frame_equal(df, cleaned_df)
+
+
+def test_remove_duplicates_partial_match():
+    """
+    Test that rows differing in only one column are NOT removed.
+    (drop_duplicates checks ALL columns by default)
+    """
+    df = pd.DataFrame({
+        'ID': [1, 1],          # Same ID
+        'Value': [10, 20]      # Different Value
+    })
+    
+    cleaned_df = remove_duplicates(df.copy())
+    
+    # Both rows should remain because they are not identical
+    assert len(cleaned_df) == 2
+
+
+def test_remove_duplicates_empty(empty_df):
+    """Edge case: Ensure it handles empty DF without crashing."""
+    try:
+        res = remove_duplicates(empty_df)
+        assert res.empty
+    except Exception as e:
+        pytest.fail(f"Function crashed on empty DataFrame: {e}")
+
+
+def test_remove_duplicates_all_identical():
+    """Edge case: DataFrame where ALL rows are exactly the same."""
+    df = pd.DataFrame({'A': [5, 5, 5, 5, 5]})
+    
+    cleaned_df = remove_duplicates(df.copy())
+    
+    # Should result in exactly 1 row
+    assert len(cleaned_df) == 1
+    assert cleaned_df.iloc[0]['A'] == 5

@@ -57,12 +57,10 @@ def duplicate_df():
         'Score': [100, 100, 90]
     })
 
-
 @pytest.fixture
 def empty_df():
     """Empty DataFrame for edge case testing."""
     return pd.DataFrame()
-
 
 
 
@@ -219,27 +217,6 @@ def test_remove_outliers_empty(empty_df):
 
 # ----------------------------------------------------------------
 # 3. Tests for: remove_duplicates
-# ----------------------------------------------------------------
-
-
-@pytest.fixture
-def duplicate_df():
-    """
-    DataFrame specifically for testing duplicate removal.
-    Contains:
-    - 2 identical rows (should become 1)
-    - 1 unique row
-    Total rows: 3 -> Expected after cleaning: 2
-    """
-    return pd.DataFrame({
-        'ID': [1, 1, 2],
-        'Name': ['Alice', 'Alice', 'Bob'],
-        'Score': [100, 100, 90]
-    })
-
-
-# ----------------------------------------------------------------
-# Tests for: remove_duplicates
 # ----------------------------------------------------------------
 
 

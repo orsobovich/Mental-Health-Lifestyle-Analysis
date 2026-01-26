@@ -12,18 +12,28 @@ def remove_duplicates(df: pd.DataFrame) -> pd.DataFrame:
     Logs the number of duplicates found and removed.
     """
     try:
+        # Capture the initial row count
         initial_count = len(df)
+
+
+        # Drop rows where all columns are identical (keeps the first occurrence by default)
         df = df.drop_duplicates()
+
+
+        # Calculate exactly how many rows were removed
         dropped_count = initial_count - len(df)
-        
+       
+        # Log how many rows were removed for data integrity tracking
         if dropped_count > 0:
             logger.info(f"Removed {dropped_count} duplicate rows.")
         else:
             logger.info("No duplicate rows found.")
-            
+       
+        # Return the cleaned DataFrame
         return df
-        
+       
     except Exception as e:
+        # Catch any unexpected errors
         logger.error(f"Error removing duplicates: {e}")
         raise e
 
@@ -35,6 +45,7 @@ def get_column_types(df: pd.DataFrame):
     """
     # Select columns with numeric data types
     numeric_cols = df.select_dtypes(include=['number']).columns
+
     # Select columns that are not numeric (categorical/object)
     non_numeric_cols = df.select_dtypes(exclude=['number']).columns
    
@@ -87,40 +98,51 @@ def remove_outliers(df: pd.DataFrame, threshold: float = 3.0):
     Standard threshold is 3.0 (values beyond 3 standard deviations from the mean are removed).
     """
     try:
-        # 1. Identify numeric columns
+        # 1. Identify numeric columns for Z-score calculation
         numeric_cols, _ = get_column_types(df)
-        
-        # 2. Calculate Z-scores for all numeric columns at once
+       
+        # 2. Calculate Z-scores for all numeric columns at once (Vectorized operation)
+        # Formula: Z = (Value - Mean) / Standard Deviation
         z_scores = (df[numeric_cols] - df[numeric_cols].mean()) / df[numeric_cols].std()
-        
-        # 3. Reporting Logic: Check which columns contain outliers before filtering
+       
+        # 3. Reporting Logic: Iterate through columns to identify which ones contain outliers
         logger.info(f"--- Outlier Detection Report (Threshold > {threshold}) ---")
-        
+       
+        # Loop over each numeric column name (e.g., 'Age', 'Salary') individually
         for col in numeric_cols:
-            # Count how many values in this specific column exceed the threshold
+
+
+            # Extract the data for the CURRENT column from the 'z_scores' DataFrame
+            # Count how many rows in this specific column exceed the threshold
             col_outliers = (np.abs(z_scores[col]) > threshold).sum()
-            
+           
+            # Log the findings ONLY if outliers exist in this specific column
             if col_outliers > 0:
                 logger.info(f"Column '{col}': found {col_outliers} outliers.")
 
+
         # 4. Create a boolean mask to filter rows
-        # 'all(axis=1)' ensures we keep rows where ALL numeric values are within the threshold
+        # 'all(axis=1)' ensures we keep a row ONLY if ALL its numeric values are within the threshold
         mask = (np.abs(z_scores) <= threshold).all(axis=1)
-        
-        # 5. Apply the filter
+       
+        # 5. Apply the filter to subset the DataFrame
         initial_count = len(df)
         df_clean = df[mask]
+
+
+        # Calculate the removed rows
         removed_count = initial_count - len(df_clean)
-        
+       
         # Log the final result
         if removed_count > 0:
             logger.info(f"Total rows removed due to outliers: {removed_count}")
         else:
             logger.info("No outliers detected in the dataset.")
-            
+       
+        # Return the cleaned dataset without outliers
         return df_clean
    
     except Exception as e:
-        # Log the specific error and stop execution
+        # Catch any unexpected errors
         logger.error(f"Error removing outliers: {e}")
         raise e

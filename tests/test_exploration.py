@@ -1,16 +1,16 @@
 import pytest
 import pandas as pd
-import numpy as np
 from src.exploration import (
     data_info,
     descriptive_stats,
     categorical_frequencies,
     numeric_ranges
 )
-import logging
 import matplotlib.pyplot as plt
 
+
 # NOTE: In this test file, synthetic data is created OUTSIDE the test functions # using @pytest.fixture.
+
 
 # ----------------------------------------------------------------
 # Fixtures (Data Setup)
@@ -31,15 +31,19 @@ def synthetic_df():
     return pd.DataFrame(data)
 
 
+
 @pytest.fixture
 def empty_df():
     """Creates an empty DataFrame to test error handling."""
     return pd.DataFrame()
 
 
+
 # ----------------------------------------------------------------
 # 1. Tests for: data_info
 # ----------------------------------------------------------------
+
+
 
 
 def test_data_info_structure(synthetic_df):
@@ -54,13 +58,17 @@ def test_data_info_structure(synthetic_df):
     assert isinstance(info_df, pd.DataFrame)
     assert 'dtype' in info_df.columns
     assert 'unique_values' in info_df.columns
-    assert info_df.loc['Color', 'unique_values'] == 3  # Red, Blue, Green
+    assert info_df.loc['Color', 'unique_values'] == 3  # expected Red, Blue, Green
+
+
 
 
 def test_data_info_empty(empty_df):
     """Verifies that data_info raises ValueError for empty DataFrame."""
-    with pytest.raises(ValueError, match="DataFrame is empty or None"):
+    with pytest.raises(ValueError, match="DataFrame is empty or None"): #check for ValueError
         data_info(empty_df)
+
+
 
 
 # ----------------------------------------------------------------
@@ -68,32 +76,38 @@ def test_data_info_empty(empty_df):
 # ----------------------------------------------------------------
 
 
+
+
 def test_descriptive_stats_separation(synthetic_df):
     """Verifies that numeric and categorical columns are separated correctly."""
-    num_stats, cat_stats = descriptive_stats(synthetic_df)
+    num_stats, cat_stats = descriptive_stats(synthetic_df) # Get stats
    
     # Check numeric stats
     assert 'Age' in num_stats.index
     assert 'Score' in num_stats.index
-    assert 'Color' not in num_stats.index
+    assert 'Color' not in num_stats.index # Ensure categorical not in numeric
     assert num_stats.loc['Age', 'mean'] == 30.0
    
     # Check categorical stats
     assert 'Color' in cat_stats.index
     assert 'City' in cat_stats.index
-    assert 'Age' not in cat_stats.index
+    assert 'Age' not in cat_stats.index # Ensure numeric not in categorical
     assert cat_stats.loc['Color', 'top'] == 'Red'
+
+
 
 
 def test_descriptive_stats_empty(empty_df):
     """Verifies that descriptive_stats raises ValueError for empty DataFrame."""
-    with pytest.raises(ValueError, match="DataFrame is empty or None"):
+    with pytest.raises(ValueError, match="DataFrame is empty or None"): #check for ValueError
         descriptive_stats(empty_df)
+
+
 def test_descriptive_stats_no_numeric():
-    """Verifies behavior when no numeric columns exist."""
+    """Verifies there is no numeric stats when no numeric columns exist."""
     df_str = pd.DataFrame({'A': ['a', 'b'], 'B': ['c', 'd']})
-    num_stats, cat_stats = descriptive_stats(df_str)
-   
+    num_stats, cat_stats = descriptive_stats(df_str) # Get stats
+   #assert none numeric stats
     assert num_stats.empty
     assert 'A' in cat_stats.index
     assert 'B' in cat_stats.index
@@ -102,31 +116,37 @@ def test_descriptive_stats_no_numeric():
 # ----------------------------------------------------------------
 
 
+
+
 def test_categorical_frequencies_logic(synthetic_df):
     """Verifies frequency counting."""
-    freq_dict = categorical_frequencies(synthetic_df, top_n=10, add_other=False)
-   
+    freq_dict = categorical_frequencies(synthetic_df, top_n=10, add_other=False)  # Get frequencies from df
+   # assert keys exist
     assert 'Color' in freq_dict
     assert 'City' in freq_dict
    
-    # Check counts for 'Color' (Red should be 3)
+    # Check counts for 'Color'
     color_counts = freq_dict['Color']
-    assert color_counts.loc['Red', 'count'] == 3
-    assert color_counts.loc['Blue', 'count'] == 1
+    assert color_counts.loc['Red', 'count'] == 3 # Red appears 3 times
+    assert color_counts.loc['Blue', 'count'] == 1 # Blue appears 1 time
+
+
 
 
 def test_categorical_frequencies_top_n_other():
-    """Verifies 'Other' logic when categories exceed top_n."""
+    """Verifies 'Other' category  is formed when categories exceed top_n."""
     # Create data with 5 unique letters
     df = pd.DataFrame({'Letter': ['A']*10 + ['B']*5 + ['C']*2 + ['D']*1 + ['E']*1})
    
     # Request top 2, expect A, B, and 'Other' (containing C, D, E sum = 4)
     freq_dict = categorical_frequencies(df, top_n=2, add_other=True)
-    res = freq_dict['Letter']
+    res = freq_dict['Letter'] # Get frequencies for 'Letter'
    
     assert len(res) == 3 # A, B, Other
-    assert 'Other' in res.index
+    assert 'Other' in res.index # Check 'Other' exists
     assert res.loc['Other', 'count'] == 4  # 2+1+1
+
+
 
 
 def test_categorical_frequencies_empty(empty_df):
@@ -136,19 +156,21 @@ def test_categorical_frequencies_empty(empty_df):
    
 def test_categorical_frequencies_invalid_top_n(synthetic_df):
     """Verifies that categorical_frequencies raises ValueError for invalid top_n."""
-    with pytest.raises(ValueError, match="top_n must be a positive integer"):
+    with pytest.raises(ValueError, match="top_n must be a positive integer"): #top_n cannot be zero or negative
         categorical_frequencies(synthetic_df, top_n=0)
-    with pytest.raises(ValueError, match="top_n must be a positive integer"):
+    with pytest.raises(ValueError, match="top_n must be a positive integer"): #top_n needs to be positive
         categorical_frequencies(synthetic_df, top_n=-5)
 # ----------------------------------------------------------------
 # 4. Tests for: numeric_ranges
 # ----------------------------------------------------------------
 
 
+
+
 def test_numeric_ranges_values(synthetic_df):
     """Verifies min, max, mean calculations."""
     ranges = numeric_ranges(synthetic_df)
-   
+   # Check 'Age' stats are valid
     assert 'Age' in ranges.index
     assert ranges.loc['Age', 'min'] == 10
     assert ranges.loc['Age', 'max'] == 50
@@ -156,14 +178,18 @@ def test_numeric_ranges_values(synthetic_df):
     assert ranges.loc['Age', 'median'] == 30
 
 
+
+
 def test_numeric_ranges_no_numeric_cols():
     """Verifies behavior when no numeric columns exist."""
     df_str = pd.DataFrame({'A': ['a', 'b'], 'B': ['c', 'd']})
     ranges = numeric_ranges(df_str)
-    assert ranges.empty
+    assert ranges.empty # Expect empty DataFrame when no numeric columns
+
+
 
 
 def test_numeric_ranges_empty(empty_df):
     """Verifies that numeric_ranges raises ValueError for empty DataFrame."""
-    with pytest.raises(ValueError, match="DataFrame is empty or None"):
+    with pytest.raises(ValueError, match="DataFrame is empty or None"): #check for ValueError
         numeric_ranges(empty_df)

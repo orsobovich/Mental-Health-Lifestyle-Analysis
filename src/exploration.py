@@ -1,11 +1,9 @@
-from pathlib import Path
-from typing import Dict, Tuple
-import numpy as np
+from typing import Dict
 import pandas as pd
-import matplotlib.pyplot as plt
 import logging
 from src.data_cleaning import get_column_types
 from src.utils import setup_logging
+
 
 # Initialize the logger for this specific module
 # This logger automatically inherits the configuration (format, level) defined in utils/main
@@ -22,9 +20,10 @@ def data_info(df: pd.DataFrame):
         tuple: (overview_string, info_dataframe)
     """
     try:
-        # Validate input: the function expects a non-empty pandas DataFrame
+        # Input Validation: Catch cases where the DataFrame is empty or None before proceeding
         if df is None or df.empty:
             raise ValueError("DataFrame is empty or None")
+
 
         # Build a DataFrame where each row represents one column from the original dataset
         info = pd.DataFrame({
@@ -32,8 +31,8 @@ def data_info(df: pd.DataFrame):
             "unique_values": df.nunique(dropna=True),
         })
 
-       
-        # Create the overview string
+
+        # Generate a text summary of the dataset dimensions (participants & variables)
         overview = f'The number of participants is "{df.shape[0]}" and the number of variables is "{df.shape[1]}"'
 
 
@@ -44,7 +43,9 @@ def data_info(df: pd.DataFrame):
         # Return both the string and the table
         return overview, info
 
+
     except Exception as e:
+        # Catch any other unexpected errors
         logger.error("Error in data_info: %s", e)
         raise e
 
@@ -57,12 +58,14 @@ def descriptive_stats(df: pd.DataFrame):
     2. categorical_stats
     """
     try:
-        # Validate input
+        # Input Validation: Catch cases where the DataFrame is empty or None before proceeding
         if df is None or df.empty:
             raise ValueError("DataFrame is empty or None")
 
-        # Identify numeric and non-numeric columns
+
+        # Identify numeric and non-numeric columns using helper function
         numeric_cols, non_numeric_cols = get_column_types(df)
+
 
         # ----- Numeric variables -----
         if len(numeric_cols) > 0:
@@ -70,17 +73,19 @@ def descriptive_stats(df: pd.DataFrame):
             # 'count' is explicitly removed before transposing
             numeric_stats = df[numeric_cols].describe().drop('count').T
         else:
-            # Handle case with no numeric columns
+            # Handle cases with no numeric columns
             numeric_stats = pd.DataFrame()
+
 
         # ----- Categorical variables -----
         if len(non_numeric_cols) > 0:
             # Compute frequency-based statistics (count, unique, top, freq)
-            # To remove 'count' here as well, apply .drop('count') after describe()
-            categorical_stats = df[non_numeric_cols].describe(include="all").T
+            # count' is explicitly removed before transposing
+            categorical_stats = df[non_numeric_cols].describe(include="all").drop('count').T
         else:
             # Handle case with no categorical columns
             categorical_stats = pd.DataFrame()
+
 
         # Log successful execution with column counts
         logger.info(
@@ -88,11 +93,13 @@ def descriptive_stats(df: pd.DataFrame):
             len(numeric_cols), len(non_numeric_cols)
         )
 
+
         # Return summary tables
         return numeric_stats, categorical_stats
 
+
     except Exception as e:
-        # Log error and re-raise for external handling or testing
+        # Catch any other unexpected errors
         logger.error("Error in descriptive_stats: %s", e)
         raise e
 
@@ -105,7 +112,7 @@ def categorical_frequencies(df: pd.DataFrame, top_n: int = 10, add_other: bool =
     """
     try:
         # --- 1. Input Validation ---
-        # Ensure the DataFrame is valid and contains data
+        # Catch cases where the DataFrame is empty or None before proceeding
         if df is None or df.empty:
             raise ValueError("DataFrame is empty or None")
        
@@ -113,12 +120,14 @@ def categorical_frequencies(df: pd.DataFrame, top_n: int = 10, add_other: bool =
         if top_n <= 0:
             raise ValueError("top_n must be a positive integer")
 
+
         # --- 2. Identify Categorical Columns ---
         # Get list of non-numeric (categorical) columns using helper function
         _, non_numeric_cols = get_column_types(df)
        
         # Dictionary to store the results
         result: Dict[str, pd.DataFrame] = {}
+
 
         # --- 3. Process Each Column ---
         for col in non_numeric_cols:
@@ -129,6 +138,7 @@ def categorical_frequencies(df: pd.DataFrame, top_n: int = 10, add_other: bool =
             # Select only the top N most frequent categories
             vc_top = vc_full.head(top_n)
 
+
             # --- 4. Handle "Other" Category ---
             # If requested AND there are more categories than top_n, group the rest as "Other"
             if add_other and len(vc_full) > top_n:
@@ -138,16 +148,22 @@ def categorical_frequencies(df: pd.DataFrame, top_n: int = 10, add_other: bool =
                 # Append the "Other" row to the selected top categories
                 vc_top = pd.concat([vc_top, pd.Series({"Other": other_count})])
 
+
             # --- 5. Format Output ---
             # Convert Series to DataFrame and store it in the result dictionary
             result[col] = vc_top.to_frame(name="count")
 
+
         # Log success
         logger.info("Categorical frequencies created successfully (top_n=%d, add_other=%s)", top_n, add_other)
+
+
+        # Return dictionary mapping column names to frequency DataFrames
         return result
 
+
     except Exception as e:
-        # Log any errors encountered
+        # Catch any other unexpected errors
         logger.error("Error in categorical_frequencies: %s", e)
         raise e
 
@@ -158,32 +174,36 @@ def numeric_ranges(df: pd.DataFrame):
     min, max, mean, standard deviation, and median.
     """
     try:
-        # Validate input DataFrame
+        # Input Validation: Catch cases where the DataFrame is empty or None before proceeding
         if df is None or df.empty:
             raise ValueError("DataFrame is empty or None")
 
-        # Get only numeric columns
+
+        # Get only numeric columns using helper function
         numeric_cols, _ = get_column_types(df)
+
 
         # If no numeric columns exist, return empty result
         if len(numeric_cols) == 0:
             logger.info("numeric_ranges: no numeric columns found")
             return pd.DataFrame()
 
+
         # Compute basic statistics and transpose for readability
         stats = df[numeric_cols].agg(
             ["min", "max", "mean", "std", "median"]
         ).T
 
+
         # Log successful computation
         logger.info("Numeric ranges computed successfully")
+
 
         # Return statistics table
         return stats
 
 
     except Exception as e:
-        # Log error and re-raise
+        # Catch any other unexpected errors
         logger.error("Error in numeric_ranges: %s", e)
         raise e
-   
